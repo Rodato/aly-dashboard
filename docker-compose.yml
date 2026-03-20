@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+  dashboard:
+    build: .
+    image: aly-dashboard:latest
+    container_name: aly_dashboard
+    restart: always
+    ports:
+      - "${DASHBOARD_PORT:-8501}:8501"
+    env_file:
+      - .env
+    # Optional: mount .env as a volume so changes apply without rebuild
+    # volumes:
+    #   - ./.env:/app/.env:ro
+
+# ── Nginx reverse proxy (recommended for HTTPS on VPS) ────────────────────
+# Add a separate nginx service or configure your host-level nginx to proxy
+# https://your-domain.com → http://localhost:8501
+# with SSL via Certbot/Let's Encrypt.
+#
+# Minimal nginx location block:
+#
+#   location / {
+#       proxy_pass         http://127.0.0.1:8501;
+#       proxy_http_version 1.1;
+#       proxy_set_header   Upgrade $http_upgrade;
+#       proxy_set_header   Connection "upgrade";
+#       proxy_set_header   Host $host;
+#       proxy_read_timeout 86400;
+#   }
