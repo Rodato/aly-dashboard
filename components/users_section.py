@@ -72,7 +72,7 @@ def render(filters: dict):
                 color_discrete_sequence=[COLORS["accent"]],
             )
             fig.update_layout(**_LAYOUT, yaxis_categoryorder="total ascending")
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
 
     with col_b:
         if df_gender.empty:
@@ -89,7 +89,7 @@ def render(filters: dict):
                 marker=dict(line=dict(color=COLORS["bg_card"], width=2)),
             )
             fig.update_layout(**_LAYOUT)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
 
     st.markdown("<div style='margin:0.25rem 0'></div>", unsafe_allow_html=True)
 
@@ -121,7 +121,7 @@ def _render_time_of_day(date_from, date_to):
         color_discrete_sequence=[COLORS["accent"]],
     )
     fig.update_layout(**_LAYOUT, bargap=0.3, xaxis_dtick=1)
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
 
 def _render_region_chart(date_from, date_to):
@@ -137,4 +137,4 @@ def _render_region_chart(date_from, date_to):
         color_discrete_sequence=[COLORS["green"]],
     )
     fig.update_layout(**_LAYOUT, yaxis_categoryorder="total ascending")
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')

@@ -49,7 +49,7 @@ def render_sidebar() -> dict:
         # ── Export Excel ──────────────────────────────────────────────────
         st.markdown(f"**{t('export_excel')}**")
         st.caption(t("export_hint"))
-        if st.button(t("export_excel"), use_container_width=True):
+        if st.button(t("export_excel"), width='stretch'):
             df_export = get_interactions_export(
                 date_from=str(date_from),
                 date_to=str(date_to_exclusive),
@@ -62,7 +62,7 @@ def render_sidebar() -> dict:
                 data=buf,
                 file_name=f"apapacho_export_{today}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True,
+                width='stretch',
             )
 
     return {
