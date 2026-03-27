@@ -53,7 +53,7 @@ def render(filters: dict):
     st.markdown("<div style='margin:0.75rem 0'></div>", unsafe_allow_html=True)
 
     # ── Who is using it? ─────────────────────────────────────────────────
-    section_header(t("who_is_using"), COLORS["blue"])
+    section_header(t("who_is_using"), COLORS["yellow"])
 
     df_country = db.get_users_by_country(date_from, date_to)
     df_gender = db.get_users_by_gender(date_from, date_to)
@@ -81,7 +81,7 @@ def render(filters: dict):
             fig = px.pie(
                 df_gender, names="gender", values="n_users",
                 title=t("by_gender"),
-                color_discrete_sequence=[COLORS["accent"], COLORS["green"], COLORS["blue"]],
+                color_discrete_sequence=[COLORS["accent"], COLORS["green"], COLORS["yellow"]],
                 hole=0.45,
             )
             fig.update_traces(

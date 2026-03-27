@@ -1,4 +1,4 @@
-"""Aly brand light style — applied globally to every dashboard."""
+"""Aly brand style — applied globally to every dashboard."""
 
 import streamlit as st
 
@@ -7,10 +7,11 @@ COLORS = {
     "bg_card":       "#FFFFFF",
     "bg_card_hover": "#F7F7F7",
     "border":        "#CCCCCC",
-    "accent":        "#0273e5",   # brand blue — primary
+    "accent":        "#0273e5",
+    "navy":          "#110079",
     "green":         "#91EBF4",
     "red":           "#F15B22",
-    "blue":          "#FFCF24",
+    "yellow":        "#FFCF24",
     "text":          "#0C1214",
     "text_secondary":"#969696",
     "text_muted":    "#CCCCCC",
@@ -31,9 +32,10 @@ def inject():
         --bg-card-hover:  #F7F7F7;
         --border:         #CCCCCC;
         --accent-primary: #0273e5;
+        --accent-navy:    #110079;
         --accent-green:   #91EBF4;
         --accent-red:     #F15B22;
-        --accent-blue:    #FFCF24;
+        --accent-yellow:  #FFCF24;
         --text-primary:   #0C1214;
         --text-secondary: #969696;
         --text-muted:     #CCCCCC;
@@ -62,7 +64,7 @@ def inject():
     [data-testid="stSidebar"] .stDateInput input {
         background-color: var(--bg-primary) !important;
         border: 1px solid var(--border) !important;
-        border-radius: 4px !important;
+        border-radius: 8px !important;
         color: var(--text-primary) !important;
         font-family: 'Open Sans', sans-serif !important;
     }
@@ -70,46 +72,45 @@ def inject():
     /* ── Main content area ─────────────────────────────────── */
     .main .block-container {
         background-color: var(--bg-primary) !important;
-        padding-top: 1.5rem !important;
+        padding-top: 2rem !important;
+        max-width: 1200px !important;
     }
 
     /* ── Metric cards ──────────────────────────────────────── */
     [data-testid="metric-container"] {
         background-color: var(--bg-card) !important;
         border: 1px solid var(--border) !important;
-        border-top: 3px solid var(--accent-primary) !important;
-        border-radius: 4px !important;
-        padding: 1rem 1.25rem !important;
-        transition: background-color 0.2s, box-shadow 0.2s;
+        border-radius: 12px !important;
+        padding: 1.25rem 1.5rem !important;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.06) !important;
+        transition: box-shadow 0.2s;
     }
     [data-testid="metric-container"]:hover {
-        background-color: var(--bg-card-hover) !important;
-        box-shadow: 0 0 12px rgba(2, 115, 229, 0.15) !important;
+        box-shadow: 0 4px 16px rgba(2, 115, 229, 0.12) !important;
     }
     [data-testid="metric-container"] [data-testid="stMetricLabel"] p {
         font-family: 'Open Sans', sans-serif !important;
-        font-size: 0.7rem !important;
-        font-weight: 600 !important;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
+        font-size: 0.8rem !important;
+        font-weight: 400 !important;
         color: var(--text-secondary) !important;
+        text-transform: none !important;
+        letter-spacing: 0 !important;
     }
     [data-testid="metric-container"] [data-testid="stMetricValue"] {
-        font-family: 'Open Sans', sans-serif !important;
-        font-size: 2rem !important;
-        font-weight: 700 !important;
-        color: var(--accent-primary) !important;
+        font-family: 'Oswald', sans-serif !important;
+        font-size: 2.5rem !important;
+        font-weight: 600 !important;
+        color: var(--text-primary) !important;
         font-variant-numeric: tabular-nums;
     }
 
     /* ── Headings ──────────────────────────────────────────── */
     h1 {
         font-family: 'Oswald', sans-serif !important;
-        font-size: 1.3rem !important;
-        font-weight: 700 !important;
+        font-size: 2rem !important;
+        font-weight: 600 !important;
         color: var(--text-primary) !important;
-        letter-spacing: 0.05em;
-        text-transform: uppercase;
+        letter-spacing: 0.02em;
     }
     h2, h3 {
         font-family: 'Open Sans', sans-serif !important;
@@ -119,44 +120,42 @@ def inject():
     /* ── Dividers ──────────────────────────────────────────── */
     hr {
         border-color: var(--border) !important;
-        margin: 0.75rem 0 !important;
+        margin: 1.25rem 0 !important;
     }
 
     /* ── Buttons ───────────────────────────────────────────── */
     .stButton > button {
         background-color: transparent !important;
         color: var(--accent-primary) !important;
-        border: 1px solid var(--accent-primary) !important;
-        border-radius: 4px !important;
+        border: 1.5px solid var(--accent-primary) !important;
+        border-radius: 999px !important;
         font-family: 'Open Sans', sans-serif !important;
-        font-size: 0.8rem !important;
+        font-size: 0.85rem !important;
         font-weight: 600 !important;
-        letter-spacing: 0.05em;
-        text-transform: uppercase;
+        padding: 0.4rem 1.2rem !important;
         transition: box-shadow 0.2s, background-color 0.2s;
     }
     .stButton > button:hover {
-        background-color: rgba(2, 115, 229, 0.08) !important;
-        box-shadow: 0 0 12px rgba(2, 115, 229, 0.15) !important;
+        background-color: rgba(2, 115, 229, 0.06) !important;
+        box-shadow: 0 2px 8px rgba(2, 115, 229, 0.15) !important;
     }
 
     /* ── Download button ───────────────────────────────────── */
     .stDownloadButton > button {
         background-color: transparent !important;
-        color: var(--accent-green) !important;
-        border: 1px solid var(--accent-green) !important;
-        border-radius: 4px !important;
+        color: var(--accent-primary) !important;
+        border: 1.5px solid var(--accent-primary) !important;
+        border-radius: 999px !important;
         font-family: 'Open Sans', sans-serif !important;
-        font-size: 0.8rem !important;
+        font-size: 0.85rem !important;
         font-weight: 600 !important;
-        text-transform: uppercase;
     }
 
     /* ── Alerts / info boxes ───────────────────────────────── */
     .stAlert {
         background-color: var(--bg-card) !important;
         border: 1px solid var(--border) !important;
-        border-radius: 4px !important;
+        border-radius: 12px !important;
         color: var(--text-secondary) !important;
         font-size: 0.85rem !important;
     }
@@ -170,26 +169,42 @@ def inject():
 
     /* ── Sidebar labels ────────────────────────────────────── */
     [data-testid="stSidebar"] label {
-        font-size: 0.7rem !important;
+        font-size: 0.75rem !important;
         font-weight: 600 !important;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
         color: var(--text-muted) !important;
     }
 
     /* ── Plotly charts ─────────────────────────────────────── */
     .js-plotly-plot {
-        border: 1px solid var(--border) !important;
-        border-top: 3px solid var(--accent-primary) !important;
-        border-radius: 4px !important;
+        border: 1.5px solid var(--accent-primary) !important;
+        border-radius: 12px !important;
         background: var(--bg-card) !important;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.06) !important;
+    }
+
+    /* ── Tabs ──────────────────────────────────────────────── */
+    [data-testid="stTabs"] [data-baseweb="tab-list"] {
+        gap: 0.5rem !important;
+        border-bottom: 1px solid var(--border) !important;
+    }
+    [data-testid="stTabs"] [data-baseweb="tab"] {
+        font-family: 'Open Sans', sans-serif !important;
+        font-size: 0.85rem !important;
+        font-weight: 600 !important;
+        color: var(--text-secondary) !important;
+        border-radius: 8px 8px 0 0 !important;
+        padding: 0.5rem 1.25rem !important;
+    }
+    [data-testid="stTabs"] [aria-selected="true"] {
+        color: var(--accent-primary) !important;
+        border-bottom: 2px solid var(--accent-primary) !important;
     }
 
     /* ── Expanders ─────────────────────────────────────────── */
     [data-testid="stExpander"] {
         background-color: var(--bg-card) !important;
         border: 1px solid var(--border) !important;
-        border-radius: 4px !important;
+        border-radius: 12px !important;
     }
     </style>
     """
@@ -197,43 +212,37 @@ def inject():
 
 
 def section_header(label: str, color: str = None):
-    """Terminal-style section header with amber top-bar."""
+    """Pill-style section header."""
     c = color or COLORS["accent"]
     st.markdown(
-        f"""<div style="
-            background: {COLORS['bg_card']};
-            border: 1px solid {COLORS['border']};
-            border-top: 3px solid {c};
-            border-radius: 4px;
-            padding: 6px 14px;
-            margin-bottom: 10px;
-            display: inline-block;
-        ">
+        f"""<div style="margin-bottom: 1rem;">
             <span style="
-                font-family: 'Oswald', sans-serif;
-                font-size: 0.7rem;
-                font-weight: 700;
-                letter-spacing: 0.12em;
-                text-transform: uppercase;
+                display: inline-block;
+                font-family: 'Open Sans', sans-serif;
+                font-size: 0.85rem;
+                font-weight: 600;
                 color: {c};
+                border: 1.5px solid {c};
+                border-radius: 999px;
+                padding: 4px 16px;
+                background: transparent;
             ">{label}</span>
         </div>""",
         unsafe_allow_html=True,
     )
 
 
-def card_start(top_color: str = None):
-    """Open a terminal-style card div."""
-    c = top_color or COLORS["accent"]
+def card_start(border_color: str = None):
+    """Open a brand-style card div."""
+    c = border_color or COLORS["accent"]
     st.markdown(
         f"""<div style="
-            background:{COLORS['bg_card']};
-            border:1px solid {COLORS['border']};
-            border-top:3px solid {c};
-            border-radius:4px;
-            padding:1rem 1.25rem;
-            margin-bottom:0.75rem;
-            transition: box-shadow 0.2s;
+            background: {COLORS['bg_card']};
+            border: 1.5px solid {c};
+            border-radius: 12px;
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
         ">""",
         unsafe_allow_html=True,
     )

@@ -18,7 +18,7 @@ def _card(title: str, color: str, desc: str, requires: str = "", metrics=None):
 
     if requires:
         st.markdown(
-            f"<span style='font-family:JetBrains Mono,monospace;font-size:0.75rem;"
+            f"<span style='font-family:'Open Sans',sans-serif;font-size:0.75rem;"
             f"color:{COLORS['text_muted']}'>🔧 {requires}</span>",
             unsafe_allow_html=True,
         )
@@ -61,7 +61,7 @@ def render_insights():
         c_acc = COLORS["accent"]
         for i in range(1, 4):
             st.markdown(
-                f"<span style='font-family:JetBrains Mono,monospace;font-size:0.85rem;color:{c_sec}'>"
+                f"<span style='font-family:'Open Sans',sans-serif;font-size:0.85rem;color:{c_sec}'>"
                 f"<b style='color:{c_acc}'>INSIGHT {i}:</b> —</span>",
                 unsafe_allow_html=True,
             )
@@ -79,7 +79,7 @@ def render_reporting():
         c_acc = COLORS["accent"]
         for label in ["Top topics", "Top questions"]:
             st.markdown(
-                f"<span style='font-family:JetBrains Mono,monospace;font-size:0.85rem;color:{c_sec}'>"
+                f"<span style='font-family:'Open Sans',sans-serif;font-size:0.85rem;color:{c_sec}'>"
                 f"<b style='color:{c_acc}'>{label}:</b> —</span>",
                 unsafe_allow_html=True,
             )

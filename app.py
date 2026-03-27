@@ -48,16 +48,22 @@ users_section.render(active_filters)
 # Divider
 st.markdown("---")
 
-# FLAGS + BUGS (side by side)
-col_flags, col_bugs = st.columns(2)
-with col_flags:
+# Secondary sections in tabs
+tab_alertas, tab_bugs, tab_insights, tab_reportes = st.tabs([
+    t("flags_title"),
+    t("bugs_title"),
+    t("insights_title"),
+    t("reporting_title"),
+])
+
+with tab_alertas:
     placeholders.render_flags()
-with col_bugs:
+
+with tab_bugs:
     placeholders.render_bugs()
 
-# INSIGHTS + REPORTING (side by side)
-col_ins, col_rep = st.columns(2)
-with col_ins:
+with tab_insights:
     placeholders.render_insights()
-with col_rep:
+
+with tab_reportes:
     placeholders.render_reporting()
