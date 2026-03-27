@@ -1,18 +1,15 @@
-"""Apapacho Dashboard — entry point."""
+"""Dashboard AlyBot — entry point with multi-page navigation."""
 
 import datetime
 import streamlit as st
 from dotenv import load_dotenv
 
-from utils.i18n import t
 from utils.styles import inject as inject_styles
-from components import filters, users_section, placeholders
+from utils.i18n import t
+from components.filters import render_sidebar
 
 load_dotenv()
 
-# ---------------------------------------------------------------------------
-# Page config (must be first Streamlit call)
-# ---------------------------------------------------------------------------
 st.set_page_config(
     page_title="Dashboard AlyBot",
     page_icon="🤖",
@@ -22,48 +19,27 @@ st.set_page_config(
 
 inject_styles()
 
-# ---------------------------------------------------------------------------
 # Session state defaults
-# ---------------------------------------------------------------------------
 if "lang" not in st.session_state:
     st.session_state.lang = "es"
 
-# ---------------------------------------------------------------------------
-# Sidebar
-# ---------------------------------------------------------------------------
-with st.sidebar:
-    st.markdown(f"### 🤖 {t('dashboard_title')}")
-    st.caption(f"{t('last_updated')}: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}")
+# Global filter state defaults (read by all pages)
+if "filter_from" not in st.session_state:
+    st.session_state.filter_from = datetime.date.today() - datetime.timedelta(days=30)
+if "filter_to" not in st.session_state:
+    st.session_state.filter_to = datetime.date.today()
 
-active_filters = filters.render_sidebar()
+# Define pages
+pages = [
+    st.Page("pages/overview.py",        title="Inicio",          icon="📊"),
+    st.Page("pages/usuarios.py",         title="Usuarios",        icon="👥"),
+    st.Page("pages/conversaciones.py",   title="Conversaciones",  icon="💬"),
+    st.Page("pages/alertas.py",          title="Alertas",         icon="🚨"),
+]
 
-# ---------------------------------------------------------------------------
-# Main content
-# ---------------------------------------------------------------------------
-st.title(f"🤖 {t('dashboard_title')}")
+pg = st.navigation(pages)
 
-# USERS section
-users_section.render(active_filters)
+# Sidebar — logo + filters (rendered on every page)
+render_sidebar()
 
-# Divider
-st.markdown("---")
-
-# Secondary sections in tabs
-tab_alertas, tab_bugs, tab_insights, tab_reportes = st.tabs([
-    t("flags_title"),
-    t("bugs_title"),
-    t("insights_title"),
-    t("reporting_title"),
-])
-
-with tab_alertas:
-    placeholders.render_flags()
-
-with tab_bugs:
-    placeholders.render_bugs()
-
-with tab_insights:
-    placeholders.render_insights()
-
-with tab_reportes:
-    placeholders.render_reporting()
+pg.run()

@@ -1,20 +1,22 @@
-"""Aly brand style — applied globally to every dashboard."""
+"""Aly brand styles — global CSS injection for the redesigned dashboard."""
 
 import streamlit as st
 
 COLORS = {
-    "bg_primary":    "#EFEFEF",
+    "bg_app":        "#F0F2F5",
+    "bg_sidebar":    "#0C1214",
     "bg_card":       "#FFFFFF",
-    "bg_card_hover": "#F7F7F7",
-    "border":        "#CCCCCC",
+    "border":        "#E5E7EB",
     "accent":        "#0273e5",
     "navy":          "#110079",
     "green":         "#91EBF4",
     "red":           "#F15B22",
     "yellow":        "#FFCF24",
+    "positive":      "#22C55E",
+    "negative":      "#F15B22",
     "text":          "#0C1214",
-    "text_secondary":"#969696",
-    "text_muted":    "#CCCCCC",
+    "text_secondary":"#6B7280",
+    "text_muted":    "#9CA3AF",
 }
 
 
@@ -22,170 +24,161 @@ def inject():
     css = """
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
-    /* ── CSS variables ─────────────────────────────────────── */
+    /* ── Variables ──────────────────────────────────────────────────────── */
     :root {
-        --bg-primary:     #EFEFEF;
+        --bg-app:         #F0F2F5;
+        --bg-sidebar:     #0C1214;
         --bg-card:        #FFFFFF;
-        --bg-card-hover:  #F7F7F7;
-        --border:         #CCCCCC;
-        --accent-primary: #0273e5;
+        --border:         #E5E7EB;
+        --accent:         #0273e5;
         --accent-navy:    #110079;
         --accent-green:   #91EBF4;
         --accent-red:     #F15B22;
         --accent-yellow:  #FFCF24;
-        --text-primary:   #0C1214;
-        --text-secondary: #969696;
-        --text-muted:     #CCCCCC;
+        --positive:       #22C55E;
+        --negative:       #F15B22;
+        --text:           #0C1214;
+        --text-secondary: #6B7280;
+        --text-muted:     #9CA3AF;
+        --radius:         10px;
+        --shadow:         0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+        --shadow-md:      0 4px 12px rgba(0,0,0,0.10);
     }
 
-    /* ── Global reset ──────────────────────────────────────── */
+    /* ── Global reset ───────────────────────────────────────────────────── */
     html, body, [class*="css"], .stApp {
-        background-color: var(--bg-primary) !important;
-        color: var(--text-primary) !important;
+        background-color: var(--bg-app) !important;
+        color: var(--text) !important;
         font-family: 'Open Sans', sans-serif !important;
     }
 
-    /* ── Hide Streamlit chrome ─────────────────────────────── */
-    #MainMenu, footer, header { visibility: hidden; }
+    /* Hide Streamlit chrome */
+    #MainMenu, footer { visibility: hidden; }
+    header[data-testid="stHeader"] { background: transparent !important; }
 
-    /* ── Sidebar ───────────────────────────────────────────── */
+    /* ── Sidebar — dark ─────────────────────────────────────────────────── */
     [data-testid="stSidebar"] {
-        background-color: var(--bg-card) !important;
-        border-right: 1px solid var(--border) !important;
+        background-color: var(--bg-sidebar) !important;
+        border-right: 1px solid #1E2A30 !important;
     }
     [data-testid="stSidebar"] * {
         font-family: 'Open Sans', sans-serif !important;
-        color: var(--text-primary) !important;
+        color: #CBD5E1 !important;
     }
+    [data-testid="stSidebar"] h1,
+    [data-testid="stSidebar"] h2,
+    [data-testid="stSidebar"] h3 {
+        color: #FFFFFF !important;
+        font-family: 'Oswald', sans-serif !important;
+    }
+
+    /* Navigation links in sidebar */
+    [data-testid="stSidebar"] [data-testid="stSidebarNav"] a {
+        color: #94A3B8 !important;
+        font-size: 0.875rem !important;
+        font-weight: 500 !important;
+        border-radius: 8px !important;
+        padding: 0.5rem 0.75rem !important;
+        transition: background 0.15s, color 0.15s !important;
+    }
+    [data-testid="stSidebar"] [data-testid="stSidebarNav"] a:hover {
+        background: rgba(255,255,255,0.07) !important;
+        color: #FFFFFF !important;
+    }
+    [data-testid="stSidebar"] [data-testid="stSidebarNav"] [aria-current="page"] {
+        background: rgba(2,115,229,0.18) !important;
+        color: #60A5FA !important;
+        border-left: 3px solid var(--accent) !important;
+        font-weight: 600 !important;
+    }
+
+    /* Sidebar form inputs */
     [data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"] > div,
     [data-testid="stSidebar"] .stDateInput input {
-        background-color: var(--bg-primary) !important;
-        border: 1px solid var(--border) !important;
+        background-color: #1E2A30 !important;
+        border: 1px solid #2D3B42 !important;
         border-radius: 8px !important;
-        color: var(--text-primary) !important;
-        font-family: 'Open Sans', sans-serif !important;
+        color: #CBD5E1 !important;
     }
+    [data-testid="stSidebar"] label,
+    [data-testid="stSidebar"] .stRadio label {
+        color: #64748B !important;
+        font-size: 0.7rem !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.06em !important;
+    }
+    [data-testid="stSidebar"] hr { border-color: #1E2A30 !important; }
 
-    /* ── Main content area ─────────────────────────────────── */
+    /* ── Main content ───────────────────────────────────────────────────── */
     .main .block-container {
-        background-color: var(--bg-primary) !important;
-        padding-top: 2rem !important;
-        max-width: 1200px !important;
+        background-color: var(--bg-app) !important;
+        padding: 1.5rem 2rem 2rem !important;
+        max-width: 1400px !important;
     }
 
-    /* ── Metric cards ──────────────────────────────────────── */
-    [data-testid="metric-container"] {
-        background-color: var(--bg-card) !important;
-        border: 1px solid var(--border) !important;
-        border-radius: 12px !important;
-        padding: 1.25rem 1.5rem !important;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.06) !important;
-        transition: box-shadow 0.2s;
-    }
-    [data-testid="metric-container"]:hover {
-        box-shadow: 0 4px 16px rgba(2, 115, 229, 0.12) !important;
-    }
-    [data-testid="metric-container"] [data-testid="stMetricLabel"] p {
-        font-family: 'Open Sans', sans-serif !important;
-        font-size: 0.8rem !important;
-        font-weight: 400 !important;
-        color: var(--text-secondary) !important;
-        text-transform: none !important;
-        letter-spacing: 0 !important;
-    }
-    [data-testid="metric-container"] [data-testid="stMetricValue"] {
-        font-family: 'Oswald', sans-serif !important;
-        font-size: 2.5rem !important;
-        font-weight: 600 !important;
-        color: var(--text-primary) !important;
-        font-variant-numeric: tabular-nums;
-    }
-
-    /* ── Headings ──────────────────────────────────────────── */
+    /* ── Headings ───────────────────────────────────────────────────────── */
     h1 {
         font-family: 'Oswald', sans-serif !important;
-        font-size: 2rem !important;
+        font-size: 1.75rem !important;
         font-weight: 600 !important;
-        color: var(--text-primary) !important;
-        letter-spacing: 0.02em;
+        color: var(--text) !important;
+        letter-spacing: 0.01em !important;
+        margin-bottom: 0.25rem !important;
     }
     h2, h3 {
         font-family: 'Open Sans', sans-serif !important;
         color: var(--text-secondary) !important;
     }
 
-    /* ── Dividers ──────────────────────────────────────────── */
-    hr {
-        border-color: var(--border) !important;
-        margin: 1.25rem 0 !important;
-    }
-
-    /* ── Buttons ───────────────────────────────────────────── */
-    .stButton > button {
-        background-color: transparent !important;
-        color: var(--accent-primary) !important;
-        border: 1.5px solid var(--accent-primary) !important;
-        border-radius: 999px !important;
-        font-family: 'Open Sans', sans-serif !important;
-        font-size: 0.85rem !important;
-        font-weight: 600 !important;
-        padding: 0.4rem 1.2rem !important;
-        transition: box-shadow 0.2s, background-color 0.2s;
-    }
-    .stButton > button:hover {
-        background-color: rgba(2, 115, 229, 0.06) !important;
-        box-shadow: 0 2px 8px rgba(2, 115, 229, 0.15) !important;
-    }
-
-    /* ── Download button ───────────────────────────────────── */
-    .stDownloadButton > button {
-        background-color: transparent !important;
-        color: var(--accent-primary) !important;
-        border: 1.5px solid var(--accent-primary) !important;
-        border-radius: 999px !important;
-        font-family: 'Open Sans', sans-serif !important;
-        font-size: 0.85rem !important;
-        font-weight: 600 !important;
-    }
-
-    /* ── Alerts / info boxes ───────────────────────────────── */
-    .stAlert {
+    /* ── KPI metric cards ───────────────────────────────────────────────── */
+    [data-testid="metric-container"] {
         background-color: var(--bg-card) !important;
         border: 1px solid var(--border) !important;
-        border-radius: 12px !important;
-        color: var(--text-secondary) !important;
-        font-size: 0.85rem !important;
+        border-radius: var(--radius) !important;
+        padding: 1.25rem 1.5rem !important;
+        box-shadow: var(--shadow) !important;
+        transition: box-shadow 0.2s, transform 0.2s !important;
     }
-
-    /* ── Radio buttons (language toggle) ──────────────────── */
-    [data-testid="stSidebar"] .stRadio label {
-        font-size: 0.8rem !important;
-        font-weight: 500 !important;
-        color: var(--text-secondary) !important;
+    [data-testid="metric-container"]:hover {
+        box-shadow: var(--shadow-md) !important;
+        transform: translateY(-1px) !important;
     }
-
-    /* ── Sidebar labels ────────────────────────────────────── */
-    [data-testid="stSidebar"] label {
-        font-size: 0.75rem !important;
-        font-weight: 600 !important;
+    [data-testid="metric-container"] [data-testid="stMetricLabel"] p {
+        font-family: 'Open Sans', sans-serif !important;
+        font-size: 0.7rem !important;
+        font-weight: 700 !important;
         color: var(--text-muted) !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.07em !important;
     }
+    [data-testid="metric-container"] [data-testid="stMetricValue"] {
+        font-family: 'Oswald', sans-serif !important;
+        font-size: 2.25rem !important;
+        font-weight: 600 !important;
+        color: var(--text) !important;
+        font-variant-numeric: tabular-nums !important;
+        line-height: 1.1 !important;
+    }
+    [data-testid="stMetricDeltaIcon-Up"]   { color: var(--positive) !important; }
+    [data-testid="stMetricDeltaIcon-Down"] { color: var(--negative) !important; }
 
-    /* ── Plotly charts ─────────────────────────────────────── */
+    /* ── Plotly chart containers ────────────────────────────────────────── */
     .js-plotly-plot {
-        border: 1.5px solid var(--accent-primary) !important;
-        border-radius: 12px !important;
+        border-radius: var(--radius) !important;
         background: var(--bg-card) !important;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.06) !important;
+        box-shadow: var(--shadow) !important;
+        border: 1px solid var(--border) !important;
     }
 
-    /* ── Tabs ──────────────────────────────────────────────── */
+    /* ── Tabs ────────────────────────────────────────────────────────────── */
     [data-testid="stTabs"] [data-baseweb="tab-list"] {
-        gap: 0.5rem !important;
+        gap: 0.25rem !important;
         border-bottom: 1px solid var(--border) !important;
+        background: transparent !important;
     }
     [data-testid="stTabs"] [data-baseweb="tab"] {
         font-family: 'Open Sans', sans-serif !important;
@@ -194,59 +187,96 @@ def inject():
         color: var(--text-secondary) !important;
         border-radius: 8px 8px 0 0 !important;
         padding: 0.5rem 1.25rem !important;
+        background: transparent !important;
+        border: none !important;
     }
     [data-testid="stTabs"] [aria-selected="true"] {
-        color: var(--accent-primary) !important;
-        border-bottom: 2px solid var(--accent-primary) !important;
+        color: var(--accent) !important;
+        border-bottom: 2px solid var(--accent) !important;
     }
 
-    /* ── Expanders ─────────────────────────────────────────── */
+    /* ── Buttons ─────────────────────────────────────────────────────────── */
+    .stButton > button {
+        background-color: var(--accent) !important;
+        color: #FFFFFF !important;
+        border: none !important;
+        border-radius: 8px !important;
+        font-family: 'Open Sans', sans-serif !important;
+        font-size: 0.85rem !important;
+        font-weight: 600 !important;
+        padding: 0.45rem 1.25rem !important;
+        transition: opacity 0.2s, box-shadow 0.2s !important;
+    }
+    .stButton > button:hover {
+        opacity: 0.9 !important;
+        box-shadow: 0 2px 8px rgba(2,115,229,0.35) !important;
+    }
+    .stDownloadButton > button {
+        background-color: transparent !important;
+        color: var(--accent) !important;
+        border: 1.5px solid var(--accent) !important;
+        border-radius: 8px !important;
+        font-family: 'Open Sans', sans-serif !important;
+        font-size: 0.85rem !important;
+        font-weight: 600 !important;
+    }
+
+    /* ── DataFrames / Tables ─────────────────────────────────────────────── */
+    [data-testid="stDataFrame"] {
+        border: 1px solid var(--border) !important;
+        border-radius: var(--radius) !important;
+        overflow: hidden !important;
+        box-shadow: var(--shadow) !important;
+    }
+
+    /* ── Expanders ───────────────────────────────────────────────────────── */
     [data-testid="stExpander"] {
         background-color: var(--bg-card) !important;
         border: 1px solid var(--border) !important;
-        border-radius: 12px !important;
+        border-radius: var(--radius) !important;
+        box-shadow: var(--shadow) !important;
     }
+
+    /* ── Alerts ──────────────────────────────────────────────────────────── */
+    .stAlert {
+        border-radius: var(--radius) !important;
+        border: 1px solid var(--border) !important;
+        font-size: 0.85rem !important;
+    }
+
+    /* ── Dividers ────────────────────────────────────────────────────────── */
+    hr { border-color: var(--border) !important; margin: 1rem 0 !important; }
+
+    /* ── Scrollbar ───────────────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
     </style>
     """
     st.html(css)
 
 
-def section_header(label: str, color: str = None):
-    """Pill-style section header."""
-    c = color or COLORS["accent"]
+def section_label(text: str):
+    """Small all-caps section divider label."""
     st.markdown(
-        f"""<div style="margin-bottom: 1rem;">
-            <span style="
-                display: inline-block;
-                font-family: 'Open Sans', sans-serif;
-                font-size: 0.85rem;
-                font-weight: 600;
-                color: {c};
-                border: 1.5px solid {c};
-                border-radius: 999px;
-                padding: 4px 16px;
-                background: transparent;
-            ">{label}</span>
-        </div>""",
+        f'<div style="font-family:\'Open Sans\',sans-serif;font-size:0.7rem;'
+        f'font-weight:700;text-transform:uppercase;letter-spacing:0.1em;'
+        f'color:#9CA3AF;padding-bottom:0.4rem;border-bottom:1px solid #E5E7EB;'
+        f'margin-bottom:1rem;width:100%">{text}</div>',
         unsafe_allow_html=True,
     )
 
 
-def card_start(border_color: str = None):
-    """Open a brand-style card div."""
-    c = border_color or COLORS["accent"]
+def page_header(title: str, subtitle: str = ""):
+    """Page title with optional subtitle line."""
+    sub_html = (
+        f'<p style="margin:0.2rem 0 0;font-size:0.875rem;'
+        f'color:#6B7280;font-family:\'Open Sans\',sans-serif">{subtitle}</p>'
+        if subtitle else ""
+    )
     st.markdown(
-        f"""<div style="
-            background: {COLORS['bg_card']};
-            border: 1.5px solid {c};
-            border-radius: 12px;
-            padding: 1.25rem 1.5rem;
-            margin-bottom: 1rem;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-        ">""",
+        f'<div style="margin-bottom:1.5rem">'
+        f'<h1 style="margin:0;padding:0">{title}</h1>{sub_html}</div>',
         unsafe_allow_html=True,
     )
-
-
-def card_end():
-    st.markdown("</div>", unsafe_allow_html=True)

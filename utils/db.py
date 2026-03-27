@@ -138,6 +138,188 @@ def get_interactions_export(date_from=None, date_to=None) -> pd.DataFrame:
 
 
 # ---------------------------------------------------------------------------
+# Analytics — new queries for redesigned dashboard
+# ---------------------------------------------------------------------------
+
+def get_daily_activity(date_from=None, date_to=None) -> pd.DataFrame:
+    """Return message and unique-user counts per calendar day."""
+    where, params = _date_filter("created_at", date_from, date_to)
+    query = f"""
+        SELECT
+            DATE(created_at) AS day,
+            COUNT(*) AS messages,
+            COUNT(DISTINCT client_number) AS users
+        FROM public.users_interactions
+        {where}
+        GROUP BY 1
+        ORDER BY 1
+    """
+    return fetch_df(query, params)
+
+
+def get_activity_heatmap(date_from=None, date_to=None) -> pd.DataFrame:
+    """Return message counts indexed by day-of-week (0=Sun) and hour (0-23)."""
+    where, params = _date_filter("created_at", date_from, date_to)
+    query = f"""
+        SELECT
+            EXTRACT(DOW  FROM created_at)::int AS dow,
+            EXTRACT(HOUR FROM created_at)::int AS hour,
+            COUNT(*) AS messages
+        FROM public.users_interactions
+        {where}
+        GROUP BY 1, 2
+        ORDER BY 1, 2
+    """
+    return fetch_df(query, params)
+
+
+def get_conversation_metrics(date_from=None, date_to=None) -> dict:
+    """Return average messages per conversation and per-user averages."""
+    where, params = _date_filter("created_at", date_from, date_to)
+    query = f"""
+        SELECT
+            COUNT(*)                                    AS total_messages,
+            COUNT(DISTINCT conversation_id)             AS total_conversations,
+            COUNT(DISTINCT client_number)               AS total_users,
+            ROUND(
+                COUNT(*)::numeric /
+                NULLIF(COUNT(DISTINCT conversation_id), 0), 1
+            )                                           AS avg_msg_per_conv,
+            ROUND(
+                COUNT(*)::numeric /
+                NULLIF(COUNT(DISTINCT client_number), 0), 1
+            )                                           AS avg_msg_per_user
+        FROM public.users_interactions
+        {where}
+    """
+    df = fetch_df(query, params)
+    row = df.iloc[0]
+    return {
+        "total_messages":      int(row["total_messages"] or 0),
+        "total_conversations": int(row["total_conversations"] or 0),
+        "total_users":         int(row["total_users"] or 0),
+        "avg_msg_per_conv":    float(row["avg_msg_per_conv"] or 0),
+        "avg_msg_per_user":    float(row["avg_msg_per_user"] or 0),
+    }
+
+
+def get_kpi_deltas(date_from: str, date_to: str) -> dict:
+    """Compare current period KPIs against the equivalent previous period.
+
+    Returns a dict with keys: users_delta, sessions_delta, messages_delta
+    where each value is a float fraction (e.g. 0.12 = +12%).
+    """
+    import datetime
+
+    try:
+        d_from = datetime.date.fromisoformat(date_from)
+        d_to   = datetime.date.fromisoformat(date_to)
+        span   = d_to - d_from
+        prev_from = str(d_from - span)
+        prev_to   = str(d_from)
+    except Exception:
+        return {"users_delta": None, "sessions_delta": None, "messages_delta": None}
+
+    current = get_user_kpis(date_from, date_to)
+    prev    = get_user_kpis(prev_from, prev_to)
+    curr_msg = get_messages_count(date_from, date_to)
+    prev_msg = get_messages_count(prev_from, prev_to)
+
+    def _delta(curr, prev):
+        if prev == 0:
+            return None
+        return round((curr - prev) / prev, 4)
+
+    return {
+        "users_delta":    _delta(current["n_users"],    prev["n_users"]),
+        "sessions_delta": _delta(current["n_sessions"], prev["n_sessions"]),
+        "messages_delta": _delta(curr_msg,              prev_msg),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Schema introspection (run once to discover available tables)
+# ---------------------------------------------------------------------------
+
+def get_schema_info() -> pd.DataFrame:
+    """Return all columns across all non-system schemas in Supabase."""
+    query = """
+        SELECT
+            table_schema,
+            table_name,
+            column_name,
+            data_type,
+            is_nullable
+        FROM information_schema.columns
+        WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
+        ORDER BY table_schema, table_name, ordinal_position
+    """
+    try:
+        return fetch_df(query)
+    except Exception as e:
+        return pd.DataFrame({"error": [str(e)]})
+
+
+# ---------------------------------------------------------------------------
+# conversations_data — summaries, keywords, flags
+# ---------------------------------------------------------------------------
+
+def get_conversations_data(date_from=None, date_to=None) -> pd.DataFrame:
+    """Return all processed conversations with summary, keywords, flags."""
+    where, params = _date_filter("conversation_date", date_from, date_to)
+    query = f"""
+        SELECT
+            conversation_id,
+            user_number,
+            conversation_date,
+            summary,
+            keywords,
+            flags,
+            session
+        FROM public.conversations_data
+        {where}
+        ORDER BY conversation_date DESC
+    """
+    try:
+        return fetch_df(query, params)
+    except Exception:
+        return pd.DataFrame()
+
+
+def get_summaries(date_from=None, date_to=None, limit: int = 20) -> pd.DataFrame:
+    """Return recent conversation summaries."""
+    where, params = _date_filter("conversation_date", date_from, date_to,
+                                 extra="summary IS NOT NULL AND summary != ''")
+    query = f"""
+        SELECT conversation_id, user_number, conversation_date, summary
+        FROM public.conversations_data
+        {where}
+        ORDER BY conversation_date DESC
+        LIMIT {limit}
+    """
+    try:
+        return fetch_df(query, params)
+    except Exception:
+        return pd.DataFrame()
+
+
+def get_flags_data(date_from=None, date_to=None) -> pd.DataFrame:
+    """Return conversations that have a flag value."""
+    where, params = _date_filter("conversation_date", date_from, date_to,
+                                 extra="flags IS NOT NULL AND flags != ''")
+    query = f"""
+        SELECT conversation_id, user_number, conversation_date, flags, summary
+        FROM public.conversations_data
+        {where}
+        ORDER BY conversation_date DESC
+    """
+    try:
+        return fetch_df(query, params)
+    except Exception:
+        return pd.DataFrame()
+
+
+# ---------------------------------------------------------------------------
 # RAG knowledge base info
 # ---------------------------------------------------------------------------
 

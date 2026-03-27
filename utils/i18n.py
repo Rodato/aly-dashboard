@@ -77,6 +77,54 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "en": "Requires NLP/LLM topic extraction.",
     },
 
+    # ---- Overview page ----
+    "activity_over_time":  {"es": "Actividad diaria", "en": "Daily activity"},
+    "activity_heatmap":    {"es": "Mapa de actividad (hora × día)", "en": "Activity heatmap (hour × day)"},
+    "avg_msg_per_conv":    {"es": "Msg / conversación", "en": "Msg / conversation"},
+    "vs_prev_period":      {"es": "vs período anterior", "en": "vs previous period"},
+    "peak_hour":           {"es": "Hora pico", "en": "Peak hour"},
+    "peak_day":            {"es": "Día más activo", "en": "Most active day"},
+    "total_convs":         {"es": "Conversaciones", "en": "Conversations"},
+
+    # ---- Usuarios page ----
+    "users_page_title":    {"es": "Usuarios", "en": "Users"},
+    "users_page_sub":      {"es": "Demografía y distribución geográfica", "en": "Demographics & geographic distribution"},
+    "demographics":        {"es": "Demografía", "en": "Demographics"},
+    "hourly_dist":         {"es": "Distribución horaria", "en": "Hourly distribution"},
+    "country_map":         {"es": "Distribución por país", "en": "Country distribution"},
+
+    # ---- Conversaciones page ----
+    "convs_page_title":    {"es": "Conversaciones", "en": "Conversations"},
+    "convs_page_sub":      {"es": "Temas, keywords y resúmenes", "en": "Topics, keywords & summaries"},
+    "top_keywords":        {"es": "Keywords más frecuentes", "en": "Top keywords"},
+    "top_topics":          {"es": "Temas principales", "en": "Top topics"},
+    "recent_summaries":    {"es": "Resúmenes recientes", "en": "Recent summaries"},
+    "keyword":             {"es": "Keyword", "en": "Keyword"},
+    "frequency":           {"es": "Frecuencia", "en": "Frequency"},
+    "no_keywords_yet":     {
+        "es": "Las keywords se poblarán cuando el agente procese conversaciones.",
+        "en": "Keywords will populate once the agent processes conversations.",
+    },
+
+    # ---- Alertas page ----
+    "alerts_page_title":   {"es": "Alertas", "en": "Alerts"},
+    "alerts_page_sub":     {"es": "Flags y errores detectados por el bot", "en": "Bot-detected flags and errors"},
+    "red_flags":           {"es": "Alertas rojas", "en": "Red flags"},
+    "orange_flags":        {"es": "Alertas naranja", "en": "Orange flags"},
+    "open_flags":          {"es": "Sin resolver", "en": "Unresolved"},
+    "no_flags":            {
+        "es": "No hay alertas registradas para este período.",
+        "en": "No flags recorded for this period.",
+    },
+    "flags_setup":         {
+        "es": "Para activar las alertas, agrega la columna `flag_type` (red | orange) en `users_interactions`.",
+        "en": "To enable flags, add a `flag_type` column (red | orange) to `users_interactions`.",
+    },
+    "date_col":            {"es": "Fecha", "en": "Date"},
+    "type_col":            {"es": "Tipo", "en": "Type"},
+    "status_col":          {"es": "Estado", "en": "Status"},
+    "description_col":     {"es": "Descripción", "en": "Description"},
+
     # ---- Misc ----
     "dashboard_title": {"es": "Dashboard AlyBot", "en": "AlyBot Dashboard"},
     "last_updated": {"es": "Última actualización", "en": "Last updated"},
