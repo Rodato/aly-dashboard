@@ -39,7 +39,7 @@ def inject():
         --text-muted:     #CCCCCC;
     }
 
-/* ── Global reset ──────────────────────────────────────── */
+    /* ── Global reset ──────────────────────────────────────── */
     html, body, [class*="css"], .stApp {
         background-color: var(--bg-primary) !important;
         color: var(--text-primary) !important;
@@ -193,7 +193,7 @@ def inject():
     }
     </style>
     """
-    st.markdown(css, unsafe_allow_html=True)
+    st.html(css)
 
 
 def section_header(label: str, color: str = None):
