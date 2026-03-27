@@ -11,19 +11,19 @@ from utils.styles import COLORS, section_header
 _LAYOUT = dict(
     paper_bgcolor=COLORS["bg_card"],
     plot_bgcolor=COLORS["bg_card"],
-    font=dict(family="Inter, sans-serif", size=11, color=COLORS["text"]),
+    font=dict(family="Open Sans, sans-serif", size=11, color=COLORS["text"]),
     margin=dict(l=4, r=4, t=40, b=4),
     xaxis=dict(
         gridcolor=COLORS["border"],
         linecolor=COLORS["border"],
-        tickfont=dict(family="JetBrains Mono, monospace", size=10, color=COLORS["text_secondary"]),
+        tickfont=dict(family="Open Sans, sans-serif", size=10, color=COLORS["text_secondary"]),
     ),
     yaxis=dict(
         gridcolor=COLORS["border"],
         linecolor=COLORS["border"],
-        tickfont=dict(family="JetBrains Mono, monospace", size=10, color=COLORS["text_secondary"]),
+        tickfont=dict(family="Open Sans, sans-serif", size=10, color=COLORS["text_secondary"]),
     ),
-    title=dict(font=dict(family="Inter, sans-serif", size=12, color=COLORS["text_secondary"]),
+    title=dict(font=dict(family="Open Sans, sans-serif", size=12, color=COLORS["text_secondary"]),
                x=0, xanchor="left"),
 )
 
@@ -85,7 +85,7 @@ def render(filters: dict):
                 hole=0.45,
             )
             fig.update_traces(
-                textfont=dict(family="JetBrains Mono, monospace", size=11),
+                textfont=dict(family="Open Sans, sans-serif", size=11),
                 marker=dict(line=dict(color=COLORS["bg_card"], width=2)),
             )
             fig.update_layout(**_LAYOUT)

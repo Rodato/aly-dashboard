@@ -19,8 +19,9 @@ venv/
 .venv/
 env/
 
-# Streamlit cache
-.streamlit/
+# Streamlit (ignore cache/secrets, track config)
+.streamlit/secrets.toml
+.streamlit/cache/
 
 # OS
 .DS_Store
