@@ -320,6 +320,39 @@ def get_flags_data(date_from=None, date_to=None) -> pd.DataFrame:
 
 
 # ---------------------------------------------------------------------------
+# Leaderboard — top users by engagement
+# ---------------------------------------------------------------------------
+
+def get_leaderboard(date_from=None, date_to=None, limit: int = 20) -> pd.DataFrame:
+    """Return top users ranked by total messages sent, with engagement metrics."""
+    where, params = _date_filter("ui.created_at", date_from, date_to)
+    query = f"""
+        SELECT
+            ui.client_number,
+            ud.name,
+            ud.country,
+            COUNT(*)                                        AS total_messages,
+            COUNT(DISTINCT ui.conversation_id)              AS total_conversations,
+            COUNT(DISTINCT DATE(ui.created_at))             AS days_active,
+            ROUND(
+                COUNT(*)::numeric /
+                NULLIF(COUNT(DISTINCT ui.conversation_id), 0), 1
+            )                                               AS avg_msg_per_conv,
+            MAX(ui.created_at)                              AS last_seen
+        FROM public.users_interactions ui
+        LEFT JOIN public.users_data ud ON ud.number = ui.client_number
+        {where}
+        GROUP BY ui.client_number, ud.name, ud.country
+        ORDER BY total_messages DESC
+        LIMIT {limit}
+    """
+    try:
+        return fetch_df(query, params)
+    except Exception:
+        return pd.DataFrame()
+
+
+# ---------------------------------------------------------------------------
 # RAG knowledge base info
 # ---------------------------------------------------------------------------
 
@@ -334,6 +367,60 @@ def get_rag_summary() -> pd.DataFrame:
         return fetch_df(query)
     except Exception:
         return pd.DataFrame(columns=["project", "document_name", "chunks"])
+
+
+# ---------------------------------------------------------------------------
+# Per-user drill-down queries
+# ---------------------------------------------------------------------------
+
+def get_user_conversations(user_number, date_from=None, date_to=None) -> pd.DataFrame:
+    """Return all conversations_data rows for a specific user.
+
+    Joins through conversation_id from users_interactions to avoid any
+    format mismatch between client_number and conversations_data.user_number.
+    """
+    date_where, date_params = _date_filter("ui.created_at", date_from, date_to)
+    if date_where:
+        full_where = "WHERE ui.client_number = %s AND " + date_where[len("WHERE "):]
+    else:
+        full_where = "WHERE ui.client_number = %s"
+    params = [str(user_number)] + date_params
+    query = f"""
+        SELECT DISTINCT ON (cd.conversation_id)
+               cd.conversation_id, cd.user_number, cd.conversation_date,
+               cd.summary, cd.keywords, cd.flags, cd.session
+        FROM public.conversations_data cd
+        JOIN public.users_interactions ui USING (conversation_id)
+        {full_where}
+        ORDER BY cd.conversation_id, cd.conversation_date DESC
+    """
+    try:
+        df = fetch_df(query, params)
+        if not df.empty:
+            df = df.sort_values("conversation_date", ascending=False).reset_index(drop=True)
+        return df
+    except Exception:
+        return pd.DataFrame()
+
+
+def get_user_messages(user_number, date_from=None, date_to=None) -> pd.DataFrame:
+    """Return all interaction messages for a specific user, ordered chronologically."""
+    date_where, date_params = _date_filter("created_at", date_from, date_to)
+    if date_where:
+        full_where = "WHERE client_number = %s AND " + date_where[len("WHERE "):]
+    else:
+        full_where = "WHERE client_number = %s"
+    params = [str(user_number)] + date_params
+    query = f"""
+        SELECT conversation_id, client_number, role, message, timestamp, created_at
+        FROM public.users_interactions
+        {full_where}
+        ORDER BY timestamp ASC
+    """
+    try:
+        return fetch_df(query, params)
+    except Exception:
+        return pd.DataFrame()
 
 
 # ---------------------------------------------------------------------------

@@ -1,6 +1,5 @@
 """Dashboard AlyBot — entry point with multi-page navigation."""
 
-import datetime
 import streamlit as st
 from dotenv import load_dotenv
 
@@ -23,18 +22,14 @@ inject_styles()
 if "lang" not in st.session_state:
     st.session_state.lang = "es"
 
-# Global filter state defaults (read by all pages)
-if "filter_from" not in st.session_state:
-    st.session_state.filter_from = datetime.date.today() - datetime.timedelta(days=30)
-if "filter_to" not in st.session_state:
-    st.session_state.filter_to = datetime.date.today()
+# Filter state is initialized in components/filters.py when the sidebar renders
 
 # Define pages
 pages = [
     st.Page("pages/overview.py",        title="Inicio",          icon="📊"),
     st.Page("pages/usuarios.py",         title="Usuarios",        icon="👥"),
-    st.Page("pages/conversaciones.py",   title="Conversaciones",  icon="💬"),
     st.Page("pages/alertas.py",          title="Alertas",         icon="🚨"),
+    st.Page("pages/leaderboard.py",      title="Leaderboard",     icon="🏆"),
 ]
 
 pg = st.navigation(pages)
