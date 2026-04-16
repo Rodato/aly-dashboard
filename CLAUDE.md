@@ -30,10 +30,10 @@ Aly_dashboard/
 │   ├── overview.py             # Inicio: KPIs+delta, growth chart, activity heatmap
 │   ├── usuarios.py             # Demografía: choropleth, donut género, bar regiones, barras horarias
 │   ├── conversaciones.py       # Keywords (parsea conversations_data.keywords) + resúmenes
-│   ├── alertas.py              # Flags (conversations_data.flags) con clasificación 🔴/🟠
-│   └── leaderboard.py          # Top usuarios: podio, bar chart top 10, tabla completa top 20
+│   ├── alertas.py              # Solo flags 🔴/🟠 (HIGH-/MEDIUM-); export Excel con transcripción; toggle revisado
+│   └── leaderboard.py          # Top usuarios: podio, bar chart top 10, tabla top 20 con columna Flags 🚩
 ├── components/
-│   ├── filters.py              # Sidebar: logo, lang toggle, date pickers+presets 7d/30d, export Excel
+│   ├── filters.py              # Sidebar: logo, lang toggle, date pickers+presets 7d/30d, export Excel interacciones
 │   ├── kpi_row.py              # Fila de KPI cards con delta % vs período anterior
 │   └── charts.py               # Fábrica Plotly: bar_h, donut, choropleth, bar_v
 ├── utils/
@@ -66,9 +66,13 @@ Aly_dashboard/
 - `get_kpi_deltas(from, to)` → dict deltas fraccionales vs período anterior
 - `get_conversations_data(from, to)` → df completo de conversations_data
 - `get_summaries(from, to, limit)` → df resúmenes recientes
-- `get_flags_data(from, to)` → df conversaciones con flags
+- `get_flags_data(from, to)` → df conversaciones con flags (todas, sin filtrar severidad)
+- `get_flag_counts_by_user(from, to)` → df user_number/n_flags (solo HIGH-/MEDIUM-)
 - `get_leaderboard(from, to, limit)` → df top usuarios por mensajes totales
-- `get_interactions_export(from, to)` → df para Excel export
+- `get_interactions_export(from, to)` → df para Excel export de interacciones
+- `get_messages_by_conversation_ids(conv_ids)` → df mensajes para lista de conversation_ids
+- `get_user_conversations(user_number, from, to)` → df conversaciones de un usuario (drill-down)
+- `get_user_messages(user_number, from, to)` → df mensajes de un usuario (drill-down)
 
 ---
 
@@ -79,7 +83,19 @@ Aly_dashboard/
 - **Texto**: todo via `t("key")` de `utils/i18n.py`. Agregar claves nuevas en ambos idiomas.
 - **CSS**: inyectado con `st.html(css)` en `utils/styles.inject()`. No usar `st.markdown(unsafe_allow_html=True)` para CSS.
 - **Colores**: siempre desde el dict `COLORS` de `utils/styles.py`. No hardcodear hex.
-- **Números de teléfono**: enmascarar en la UI (primeros 4 dígitos + `****` + últimos 2).
+- **Números de teléfono**: enmascarar en la UI (primeros 4 dígitos + `****` + últimos 2). El Excel de alertas exporta el número sin mask intencionalmente para el equipo de respuesta.
+
+---
+
+## Clasificación de flags
+El campo `flags` en `conversations_data` es un string CSV con múltiples flags por conversación, cada una con prefijo de severidad:
+- `HIGH-<razón>` → 🔴 rojo (crítico)
+- `MEDIUM-<razón>` → 🟠 naranja (advertencia)
+- `LOW-<razón>` → ignorado en UI (no se muestra)
+
+La lógica de clasificación vive en `_classify_flag()` en `pages/alertas.py`. El leaderboard usa la misma lógica en Python (no SQL) para contar flags por usuario.
+
+**Si el bot cambia el formato de estos campos, actualizar `_classify_flag()` en `alertas.py` y la lógica en `leaderboard.py`.**
 
 ---
 
@@ -90,6 +106,32 @@ Aly_dashboard/
 - **Fondo app**: `#F0F2F5`
 - **Accent principal**: `#0273e5`
 - **Positivo/negativo**: `#22C55E` / `#F15B22`
+
+---
+
+## Proyecto Complementario: Aly_Apapachar
+
+**Ubicación**: `/Users/daniel/Desktop/Dev/Aly_Apapachar/`
+
+Aly_Apapachar es el bot WhatsApp (LangGraph + MongoDB + Twilio) que **genera los datos** que este dashboard visualiza.
+
+### Flujo de datos
+```
+Aly_Apapachar (bot) → Conversation Closer → Supabase → este dashboard
+```
+
+### Contrato de datos
+- `keywords`: string CSV — se parsea con `split(",")` en `conversaciones.py`
+- `flags`: string CSV con prefijos `HIGH-` / `MEDIUM-` / `LOW-` por flag, múltiples flags por conversación
+- `summary`: texto libre en el idioma del facilitador
+
+### Quién escribe cada tabla
+| Tabla | Escrita por |
+|---|---|
+| `public.users_interactions` | `bot.py` (cada mensaje) |
+| `public.users_data` | `onboarding_agent.py` (registro nuevo usuario) |
+| `public.conversations_data` | Conversation Closer (al cerrar sesión) |
+| `vector_aly.rag_embeddings` | scripts de ingest |
 
 ---
 
