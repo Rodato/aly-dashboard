@@ -27,6 +27,26 @@ if df.empty:
     st.info(t("lb_no_data"))
     st.stop()
 
+# Count red+orange flags per user in Python (avoids phone number format mismatches)
+def _is_actionable_flag(val):
+    if not val or not isinstance(val, str):
+        return False
+    v = val.lower()
+    return any(kw in v for kw in ("high", "medium", "red", "rojo", "critico", "orange", "naranja", "warning", "advertencia"))
+
+df_flags_raw = db.get_flags_data(date_from, date_to)
+if not df_flags_raw.empty:
+    df_flags_raw = df_flags_raw[df_flags_raw["flags"].apply(_is_actionable_flag)]
+    flag_counts = df_flags_raw.groupby("user_number").size().reset_index(name="n_flags")
+    # Normalize: strip leading zeros / whitespace for robust matching
+    flag_counts["user_number"] = flag_counts["user_number"].astype(str).str.strip()
+    df["_client_norm"] = df["client_number"].astype(str).str.strip()
+    df = df.merge(flag_counts.rename(columns={"user_number": "_client_norm"}), on="_client_norm", how="left")
+    df["n_flags"] = df["n_flags"].fillna(0).astype(int)
+    df = df.drop(columns=["_client_norm"])
+else:
+    df["n_flags"] = 0
+
 # ── Prepare data ──────────────────────────────────────────────────────────────
 df = df.reset_index(drop=True)
 df.index = df.index + 1  # 1-based rank
@@ -151,17 +171,33 @@ section_label(t("lb_engagement"))
 
 st.caption(t("lb_click_hint"))
 
-display_df = df[["rank_label", "display_name", "country", "total_messages",
-                  "total_conversations", "days_active", "avg_msg_per_conv", "last_seen"]].copy()
+cols_to_show = ["rank_label", "display_name", "country", "total_messages",
+                "total_conversations", "days_active", "avg_msg_per_conv", "last_seen"]
+if "n_flags" in df.columns:
+    cols_to_show.append("n_flags")
+
+display_df = df[cols_to_show].copy()
 
 if "last_seen" in display_df.columns:
     display_df["last_seen"] = pd.to_datetime(display_df["last_seen"]).dt.strftime("%d/%m/%Y")
 
-display_df.columns = [
+col_names = [
     t("lb_rank"), t("lb_user"), t("lb_country"),
     t("lb_messages"), t("lb_conversations"), t("lb_days_active"),
     t("lb_avg_msg"), t("lb_last_seen"),
 ]
+if "n_flags" in df.columns:
+    col_names.append(t("lb_flags"))
+display_df.columns = col_names
+
+col_config = {
+    t("lb_messages"):      st.column_config.NumberColumn(format="%d"),
+    t("lb_conversations"): st.column_config.NumberColumn(format="%d"),
+    t("lb_days_active"):   st.column_config.NumberColumn(format="%d"),
+    t("lb_avg_msg"):       st.column_config.NumberColumn(format="%.1f"),
+}
+if "n_flags" in df.columns:
+    col_config[t("lb_flags")] = st.column_config.NumberColumn(format="%d")
 
 selection = st.dataframe(
     display_df,
@@ -169,12 +205,7 @@ selection = st.dataframe(
     hide_index=True,
     on_select="rerun",
     selection_mode="single-row",
-    column_config={
-        t("lb_messages"):      st.column_config.NumberColumn(format="%d"),
-        t("lb_conversations"): st.column_config.NumberColumn(format="%d"),
-        t("lb_days_active"):   st.column_config.NumberColumn(format="%d"),
-        t("lb_avg_msg"):       st.column_config.NumberColumn(format="%.1f"),
-    },
+    column_config=col_config,
 )
 
 # ── User detail panel ─────────────────────────────────────────────────────────

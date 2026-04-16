@@ -352,6 +352,35 @@ def get_leaderboard(date_from=None, date_to=None, limit: int = 20) -> pd.DataFra
         return pd.DataFrame()
 
 
+def get_flag_counts_by_user(date_from=None, date_to=None) -> pd.DataFrame:
+    """Return count of red+orange flags per user for the given period."""
+    where, params = _date_filter(
+        "conversation_date", date_from, date_to,
+        extra="flags IS NOT NULL AND flags != ''",
+    )
+    query = f"""
+        SELECT user_number,
+               COUNT(*) FILTER (
+                   WHERE LOWER(flags) LIKE '%high%'
+                      OR LOWER(flags) LIKE '%medium%'
+                      OR LOWER(flags) LIKE '%red%'
+                      OR LOWER(flags) LIKE '%rojo%'
+                      OR LOWER(flags) LIKE '%critico%'
+                      OR LOWER(flags) LIKE '%orange%'
+                      OR LOWER(flags) LIKE '%naranja%'
+                      OR LOWER(flags) LIKE '%warning%'
+                      OR LOWER(flags) LIKE '%advertencia%'
+               ) AS n_flags
+        FROM public.conversations_data
+        {where}
+        GROUP BY user_number
+    """
+    try:
+        return fetch_df(query, params)
+    except Exception:
+        return pd.DataFrame()
+
+
 # ---------------------------------------------------------------------------
 # RAG knowledge base info
 # ---------------------------------------------------------------------------
@@ -419,6 +448,22 @@ def get_user_messages(user_number, date_from=None, date_to=None) -> pd.DataFrame
     """
     try:
         return fetch_df(query, params)
+    except Exception:
+        return pd.DataFrame()
+
+
+def get_messages_by_conversation_ids(conv_ids: list) -> pd.DataFrame:
+    """Return all messages for a list of conversation_ids, ordered chronologically."""
+    if not conv_ids:
+        return pd.DataFrame()
+    query = """
+        SELECT conversation_id, client_number, role, message, timestamp
+        FROM public.users_interactions
+        WHERE conversation_id = ANY(%s)
+        ORDER BY conversation_id, timestamp ASC
+    """
+    try:
+        return fetch_df(query, [list(conv_ids)])
     except Exception:
         return pd.DataFrame()
 

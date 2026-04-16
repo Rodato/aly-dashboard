@@ -124,6 +124,11 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "type_col":            {"es": "Tipo", "en": "Type"},
     "status_col":          {"es": "Estado", "en": "Status"},
     "description_col":     {"es": "Descripción", "en": "Description"},
+    "export_alerts":       {"es": "Exportar Alertas", "en": "Export Flags"},
+    "export_alerts_hint":  {"es": "Descarga las alertas del período filtrado.", "en": "Download flags for the filtered period."},
+    "mark_reviewed":       {"es": "Marcar como revisado", "en": "Mark as reviewed"},
+    "hide_reviewed":       {"es": "Ocultar revisados", "en": "Hide reviewed"},
+    "reviewed_badge":      {"es": "✅ Revisado", "en": "✅ Reviewed"},
 
     # ---- Leaderboard page ----
     "lb_page_title":       {"es": "Leaderboard", "en": "Leaderboard"},
@@ -150,6 +155,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "lb_role_user":        {"es": "Usuario", "en": "User"},
     "lb_role_assistant":   {"es": "Asistente", "en": "Assistant"},
     "lb_click_hint":       {"es": "Haz clic en una fila para ver el detalle del usuario.", "en": "Click a row to view user details."},
+    "lb_flags":            {"es": "Flags 🚩", "en": "Flags 🚩"},
 
     # ---- Misc ----
     "dashboard_title": {"es": "Dashboard AlyBot", "en": "AlyBot Dashboard"},
