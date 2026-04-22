@@ -11,9 +11,10 @@ import streamlit as st
 
 from utils.i18n import t
 from utils import db
-from utils.styles import COLORS, page_header, section_label
+from utils.styles import COLORS, page_header, card_header
 from utils.translate import translate_keywords
 from components.filters import get_filters
+from components.kpi_row import ICONS as KPI_ICONS
 
 filters   = get_filters()
 date_from = filters["date_from"]
@@ -70,7 +71,7 @@ def _medal(rank):
 df["rank_label"] = df.index.map(_medal)
 
 # ── Podium — top 3 ────────────────────────────────────────────────────────────
-section_label(t("lb_top_stats"))
+card_header(title=t("lb_top_stats"), icon_svg=KPI_ICONS["activity"])
 
 top3 = df.head(3)
 podium_order = [1, 0, 2]  # silver, gold, bronze visual order
@@ -117,9 +118,14 @@ for col_idx, df_idx in enumerate(podium_order):
             unsafe_allow_html=True,
         )
 
-st.markdown("<div style='margin:1.5rem 0 0.5rem'></div>", unsafe_allow_html=True)
+st.markdown("<div style='margin:1.3rem 0 0.25rem'></div>", unsafe_allow_html=True)
 
 # ── Bar chart — top 10 ────────────────────────────────────────────────────────
+card_header(
+    title="Top 10 usuarios",
+    subtitle=t("lb_messages"),
+    icon_svg=KPI_ICONS["chart"],
+)
 top10 = df.head(10).copy()
 top10_sorted = top10.sort_values("total_messages", ascending=True)
 
@@ -167,9 +173,11 @@ st.plotly_chart(fig, use_container_width=True)
 st.markdown("<div style='margin:0.5rem 0'></div>", unsafe_allow_html=True)
 
 # ── Full table (interactive) ───────────────────────────────────────────────────
-section_label(t("lb_engagement"))
-
-st.caption(t("lb_click_hint"))
+card_header(
+    title=t("lb_engagement"),
+    subtitle=t("lb_click_hint"),
+    icon_svg=KPI_ICONS["users"],
+)
 
 cols_to_show = ["rank_label", "display_name", "country", "total_messages",
                 "total_conversations", "days_active", "avg_msg_per_conv", "last_seen"]
@@ -349,8 +357,11 @@ if selected_rows:
     user_number  = user_row["client_number"]
     display_name = user_row["display_name"]
 
-    st.markdown("<div style='margin:1.5rem 0 0.5rem'></div>", unsafe_allow_html=True)
-    section_label(f"{t('lb_detail_for')} {display_name}")
+    st.markdown("<div style='margin:1.3rem 0 0.25rem'></div>", unsafe_allow_html=True)
+    card_header(
+        title=f"{t('lb_detail_for')} {display_name}",
+        icon_svg=KPI_ICONS["users"],
+    )
 
     df_convs = db.get_user_conversations(user_number, date_from, date_to)
     df_msgs  = db.get_user_messages(user_number, date_from, date_to)

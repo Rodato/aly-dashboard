@@ -142,13 +142,14 @@ def get_interactions_export(date_from=None, date_to=None) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 
 def get_daily_activity(date_from=None, date_to=None) -> pd.DataFrame:
-    """Return message and unique-user counts per calendar day."""
+    """Return message, unique-user and session counts per calendar day."""
     where, params = _date_filter("created_at", date_from, date_to)
     query = f"""
         SELECT
             DATE(created_at) AS day,
             COUNT(*) AS messages,
-            COUNT(DISTINCT client_number) AS users
+            COUNT(DISTINCT client_number) AS users,
+            COUNT(DISTINCT conversation_id) AS sessions
         FROM public.users_interactions
         {where}
         GROUP BY 1

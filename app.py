@@ -10,7 +10,7 @@ from components.filters import render_sidebar
 load_dotenv()
 
 st.set_page_config(
-    page_title="Dashboard AlyBot",
+    page_title="Dashboard Aly",
     page_icon="🤖",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -32,7 +32,7 @@ pages = [
     st.Page("pages/leaderboard.py",      title="Leaderboard",     icon="🏆"),
 ]
 
-pg = st.navigation(pages)
+pg = st.navigation(pages, position="hidden")
 
 # Sidebar — logo + filters (rendered on every page)
 render_sidebar()
