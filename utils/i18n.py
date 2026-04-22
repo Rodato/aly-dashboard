@@ -11,6 +11,12 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "login_error": {"es": "Usuario o contraseña incorrectos.", "en": "Invalid username or password."},
     "logout": {"es": "Cerrar sesión", "en": "Logout"},
 
+    # ---- Sidebar nav ----
+    "nav_home":        {"es": "Inicio",      "en": "Home"},
+    "nav_users":       {"es": "Usuarios",    "en": "Users"},
+    "nav_alerts":      {"es": "Alertas",     "en": "Alerts"},
+    "nav_leaderboard": {"es": "Leaderboard", "en": "Leaderboard"},
+
     # ---- Sidebar / Filters ----
     "filters": {"es": "Filtros", "en": "Filters"},
     "date_range": {"es": "Rango de fechas", "en": "Date range"},
@@ -30,7 +36,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "reporting_title": {"es": "REPORTES", "en": "REPORTING"},
 
     # ---- KPIs ----
-    "n_users": {"es": "Usuarios únicos", "en": "Unique users"},
+    "n_users": {"es": "Total usuarios", "en": "Total users"},
     "n_sessions": {"es": "Sesiones", "en": "Sessions"},
     "n_messages": {"es": "Mensajes", "en": "Messages"},
 
@@ -79,12 +85,24 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
 
     # ---- Overview page ----
     "activity_over_time":  {"es": "Actividad diaria", "en": "Daily activity"},
-    "activity_heatmap":    {"es": "Mapa de actividad (hora × día)", "en": "Activity heatmap (hour × day)"},
+    "activity_heatmap":    {"es": "Mapa de actividad", "en": "Activity heatmap"},
+    "activity_heatmap_sub":{"es": "Hora × día de la semana", "en": "Hour × day of the week"},
     "avg_msg_per_conv":    {"es": "Msg / conversación", "en": "Msg / conversation"},
     "vs_prev_period":      {"es": "vs período anterior", "en": "vs previous period"},
     "peak_hour":           {"es": "Hora pico", "en": "Peak hour"},
     "peak_day":            {"es": "Día más activo", "en": "Most active day"},
     "total_convs":         {"es": "Conversaciones", "en": "Conversations"},
+
+    # ---- Hero banner ----
+    "hero_status_ok":       {"es": "Sistema saludable",          "en": "System healthy"},
+    "hero_status_warn":     {"es": "{n} alertas en seguimiento", "en": "{n} flags under review"},
+    "hero_status_crit":     {"es": "{n} alertas críticas",       "en": "{n} critical flags"},
+    "hero_headline_days":   {"es": "En los últimos <b>{days}</b> días, AlyBot atendió <b>{users}</b> usuarios en <b>{sessions}</b> conversaciones, con <b>{msg}</b> mensajes intercambiados.",
+                             "en": "Over the past <b>{days}</b> days, AlyBot served <b>{users}</b> users across <b>{sessions}</b> conversations, exchanging <b>{msg}</b> messages."},
+    "hero_meta_label":      {"es": "ALERTAS ABIERTAS",           "en": "OPEN FLAGS"},
+
+    # ---- Card header subtitles ----
+    "card_last_n_days":     {"es": "Últimos {n} días", "en": "Last {n} days"},
 
     # ---- Usuarios page ----
     "users_page_title":    {"es": "Usuarios", "en": "Users"},
@@ -92,6 +110,10 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "demographics":        {"es": "Demografía", "en": "Demographics"},
     "hourly_dist":         {"es": "Distribución horaria", "en": "Hourly distribution"},
     "country_map":         {"es": "Distribución por país", "en": "Country distribution"},
+    "kpi_countries":       {"es": "Países",            "en": "Countries"},
+    "kpi_regions":         {"es": "Regiones",          "en": "Regions"},
+    "kpi_top_country":     {"es": "País principal",    "en": "Top country"},
+    "kpi_top_region":      {"es": "Región principal",  "en": "Top region"},
 
     # ---- Conversaciones page ----
     "convs_page_title":    {"es": "Conversaciones", "en": "Conversations"},
