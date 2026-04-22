@@ -6,10 +6,10 @@ import pandas as pd
 import streamlit as st
 
 from components.filters import get_filters
-from components.kpi_row import render as kpi_row
+from components.kpi_row import render as kpi_row, ICONS as KPI_ICONS
 from utils.i18n import t
 from utils import db
-from utils.styles import COLORS, page_header, section_label
+from utils.styles import COLORS, page_header, card_header
 
 filters   = get_filters()
 date_from = filters["date_from"]
@@ -68,14 +68,21 @@ else:
 
 # ── KPI row ───────────────────────────────────────────────────────────────────
 kpi_row([
-    {"label": t("red_flags"),    "value": n_red,    "delta": None},
-    {"label": t("orange_flags"), "value": n_orange, "delta": None},
-    {"label": t("open_flags"),   "value": n_total,  "delta": None},
+    {"label": t("red_flags"),    "value": n_red,    "delta": None,
+     "accent": "red",    "icon": "alert-triangle"},
+    {"label": t("orange_flags"), "value": n_orange, "delta": None,
+     "accent": "yellow", "icon": "alert-circle"},
+    {"label": t("open_flags"),   "value": n_total,  "delta": None,
+     "accent": "navy",   "icon": "flag"},
 ])
 st.markdown("<div style='margin:1rem 0 0.5rem'></div>", unsafe_allow_html=True)
 
 # ── Flags table ───────────────────────────────────────────────────────────────
-section_label(t("flags_title"))
+card_header(
+    title=t("flags_title"),
+    subtitle=f"{n_total} {t('open_flags').lower()}" if n_total else "",
+    icon_svg=KPI_ICONS["flag"],
+)
 
 if df_flags.empty:
     st.markdown(
@@ -170,8 +177,12 @@ else:
     )
 
     # ── Per-flag detail expanders ─────────────────────────────────────────────
-    st.markdown("<div style='margin:1rem 0 0.5rem'></div>", unsafe_allow_html=True)
-    section_label("Detalle de conversaciones")
+    st.markdown("<div style='margin:1.2rem 0 0.25rem'></div>", unsafe_allow_html=True)
+    card_header(
+        title="Detalle de conversaciones",
+        subtitle=f"{len(working)} registros",
+        icon_svg=KPI_ICONS["message"],
+    )
 
     for _, row in working.iterrows():
         conv_id  = str(row.get("conversation_id", "—"))
@@ -183,7 +194,7 @@ else:
         is_reviewed = conv_id in st.session_state["reviewed_flags"]
         reviewed_tag = "  ✅" if is_reviewed else ""
 
-        with st.expander(f"{emoji}  {fecha}  ·  `{conv_id[:20]}`{reviewed_tag}"):
+        with st.expander(f"{emoji}  {fecha}  ·  `{conv_id}`{reviewed_tag}"):
             st.markdown(
                 f'<p style="font-family:\'Open Sans\',sans-serif;font-size:0.78rem;'
                 f'font-weight:700;text-transform:uppercase;color:{COLORS["text_muted"]};margin:0 0 0.25rem">'
