@@ -1,10 +1,17 @@
-"""Sidebar — logo, nav, filters, export. Writes to st.session_state for all pages."""
+"""Sidebar — logo, nav, filters. Writes to st.session_state for all pages."""
 
 import datetime
-import io
+from zoneinfo import ZoneInfo
 import streamlit as st
 from utils.i18n import t
-from utils.db import get_interactions_export
+
+# UI opera en GMT-5 (Colombia/México). "Hoy" debe leerse en esa zona, no en
+# la del servidor (Streamlit Cloud corre en UTC).
+TZ = ZoneInfo("America/Bogota")
+
+
+def _today() -> datetime.date:
+    return datetime.datetime.now(TZ).date()
 
 
 # Material Symbols icons (rendered natively by Streamlit — consistent mono line style)
@@ -96,57 +103,29 @@ def render_sidebar():
             unsafe_allow_html=True,
         )
 
-        today = datetime.date.today()
+        today = _today()
 
         if "filter_from" not in st.session_state:
             st.session_state["filter_from"] = today - datetime.timedelta(days=30)
         if "filter_to" not in st.session_state:
             st.session_state["filter_to"] = today
 
-        date_from = st.date_input(t("date_from"), key="filter_from")
-        date_to   = st.date_input(t("date_to"),   key="filter_to")
+        # Los presets escriben en session_state ANTES de que se rendericen los
+        # date_input en el siguiente run (los callbacks on_click corren entre
+        # runs). Asignar después de instanciar el widget no actualiza la UI.
+        def _set_range(days: int):
+            t_today = _today()
+            st.session_state["filter_from"] = t_today - datetime.timedelta(days=days)
+            st.session_state["filter_to"]   = t_today
+
+        st.date_input(t("date_from"), key="filter_from")
+        st.date_input(t("date_to"),   key="filter_to")
 
         col_a, col_b = st.columns(2)
         with col_a:
-            if st.button("7d", use_container_width=True):
-                st.session_state.filter_from = today - datetime.timedelta(days=7)
-                st.session_state.filter_to   = today
-                st.rerun()
+            st.button("7d",  use_container_width=True, on_click=_set_range, args=(7,))
         with col_b:
-            if st.button("30d", use_container_width=True):
-                st.session_state.filter_from = today - datetime.timedelta(days=30)
-                st.session_state.filter_to   = today
-                st.rerun()
-
-        st.markdown(
-            '<hr style="margin:0.75rem 0">',
-            unsafe_allow_html=True,
-        )
-
-        # ── Export ────────────────────────────────────────────────────────────
-        date_to_excl = date_to + datetime.timedelta(days=1)
-
-        st.markdown(
-            '<p style="font-family:\'Open Sans\',sans-serif;font-size:0.66rem;'
-            'font-weight:700;text-transform:uppercase;letter-spacing:0.1em;'
-            'color:#9CA3AF;margin-bottom:0.5rem">' + t("export_excel") + '</p>',
-            unsafe_allow_html=True,
-        )
-        if st.button(t("export_excel"), use_container_width=True):
-            df_export = get_interactions_export(
-                date_from=str(date_from),
-                date_to=str(date_to_excl),
-            )
-            buf = io.BytesIO()
-            df_export.to_excel(buf, index=False, engine="openpyxl")
-            buf.seek(0)
-            st.download_button(
-                label=t("export_excel"),
-                data=buf,
-                file_name=f"apapacho_export_{today}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True,
-            )
+            st.button("30d", use_container_width=True, on_click=_set_range, args=(30,))
 
         # ── Footer ────────────────────────────────────────────────────────────
         st.markdown(
@@ -155,7 +134,7 @@ def render_sidebar():
             f'color:#9CA3AF;border-top:1px solid #E5E7EB">'
             f'{t("last_updated")}<br>'
             f'<span style="color:#6B7280;font-weight:500;font-variant-numeric:tabular-nums">'
-            f'{datetime.datetime.now().strftime("%Y-%m-%d %H:%M")}</span>'
+            f'{datetime.datetime.now(TZ).strftime("%Y-%m-%d %H:%M")} GMT-5</span>'
             f'</div>',
             unsafe_allow_html=True,
         )
@@ -163,8 +142,9 @@ def render_sidebar():
 
 def get_filters() -> dict:
     """Return the current filter values from session_state (for use in pages)."""
-    date_from = st.session_state.get("filter_from", datetime.date.today() - datetime.timedelta(days=30))
-    date_to   = st.session_state.get("filter_to",   datetime.date.today())
+    today = _today()
+    date_from = st.session_state.get("filter_from", today - datetime.timedelta(days=30))
+    date_to   = st.session_state.get("filter_to",   today)
     date_to_excl = date_to + datetime.timedelta(days=1)
     return {
         "date_from": str(date_from),

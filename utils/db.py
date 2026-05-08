@@ -8,6 +8,11 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
+# Todos los timestamps almacenados son timestamptz en UTC. La UI opera en GMT-5
+# (Colombia/México), así que convertimos en cada query antes de extraer hora,
+# día o filtrar por rango.
+TZ = "America/Bogota"
+
 
 def get_connection():
     return psycopg2.connect(DATABASE_URL)
@@ -58,7 +63,7 @@ def get_hourly_distribution(date_from=None, date_to=None) -> pd.DataFrame:
     where, params = _date_filter("created_at", date_from, date_to)
     query = f"""
         SELECT
-            EXTRACT(HOUR FROM created_at) AS hour,
+            EXTRACT(HOUR FROM created_at AT TIME ZONE '{TZ}') AS hour,
             COUNT(*) AS messages
         FROM public.users_interactions
         {where}
@@ -146,7 +151,7 @@ def get_daily_activity(date_from=None, date_to=None) -> pd.DataFrame:
     where, params = _date_filter("created_at", date_from, date_to)
     query = f"""
         SELECT
-            DATE(created_at) AS day,
+            (created_at AT TIME ZONE '{TZ}')::date AS day,
             COUNT(*) AS messages,
             COUNT(DISTINCT client_number) AS users,
             COUNT(DISTINCT conversation_id) AS sessions
@@ -163,8 +168,8 @@ def get_activity_heatmap(date_from=None, date_to=None) -> pd.DataFrame:
     where, params = _date_filter("created_at", date_from, date_to)
     query = f"""
         SELECT
-            EXTRACT(DOW  FROM created_at)::int AS dow,
-            EXTRACT(HOUR FROM created_at)::int AS hour,
+            EXTRACT(DOW  FROM created_at AT TIME ZONE '{TZ}')::int AS dow,
+            EXTRACT(HOUR FROM created_at AT TIME ZONE '{TZ}')::int AS hour,
             COUNT(*) AS messages
         FROM public.users_interactions
         {where}
@@ -334,12 +339,12 @@ def get_leaderboard(date_from=None, date_to=None, limit: int = 20) -> pd.DataFra
             ud.country,
             COUNT(*)                                        AS total_messages,
             COUNT(DISTINCT ui.conversation_id)              AS total_conversations,
-            COUNT(DISTINCT DATE(ui.created_at))             AS days_active,
+            COUNT(DISTINCT (ui.created_at AT TIME ZONE '{TZ}')::date) AS days_active,
             ROUND(
                 COUNT(*)::numeric /
                 NULLIF(COUNT(DISTINCT ui.conversation_id), 0), 1
             )                                               AS avg_msg_per_conv,
-            MAX(ui.created_at)                              AS last_seen
+            MAX(ui.created_at AT TIME ZONE '{TZ}')          AS last_seen
         FROM public.users_interactions ui
         LEFT JOIN public.users_data ud ON ud.number = ui.client_number
         {where}
@@ -474,16 +479,21 @@ def get_messages_by_conversation_ids(conv_ids: list) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 
 def _date_filter(col: str, date_from, date_to, extra: str = ""):
-    """Build a WHERE clause for date range + optional extra condition."""
+    """Build a WHERE clause for date range + optional extra condition.
+
+    El rango de fechas se interpreta en la zona local (America/Bogota / GMT-5),
+    para que un filtro "del 1 al 7 de mayo" incluya todos los mensajes vistos
+    como ese rango por el equipo en Colombia/México, no en UTC.
+    """
     clauses = []
     params: list = []
     if extra:
         clauses.append(extra)
     if date_from:
-        clauses.append(f"{col} >= %s")
+        clauses.append(f"({col} AT TIME ZONE '{TZ}')::date >= %s")
         params.append(str(date_from))
     if date_to:
-        clauses.append(f"{col} < %s")
+        clauses.append(f"({col} AT TIME ZONE '{TZ}')::date < %s")
         params.append(str(date_to))
     if clauses:
         return "WHERE " + " AND ".join(clauses), params
