@@ -35,10 +35,10 @@ Aly_dashboard/
 │   ├── overview.py             # Inicio: hero banner, 4 KPIs con sparkline, growth chart + stat_list (grid 2:1), heatmap bloques
 │   ├── usuarios.py             # Demografía: 4 KPIs, mapa silueta + arcos por región, tabla países (si >3)
 │   ├── conversaciones.py       # Keywords + resúmenes (no está en nav, en standby)
-│   ├── alertas.py              # Flags 🔴/🟠 (HIGH-/MEDIUM-), export Excel con transcripción, toggle revisado, card_header
+│   ├── alertas.py              # Flags 🔴/🟠 (HIGH-/MEDIUM-), export Excel con transcripción, "marcar revisado" persistido en Supabase (reviewed_at)
 │   └── leaderboard.py          # Top usuarios: podio, bar top 10, tabla top 20 con Flags 🚩, drill-down con tabs
 ├── components/
-│   ├── filters.py              # Sidebar: logo Aly, nav custom (Material icons), lang toggle, date pickers+7d/30d, export Excel
+│   ├── filters.py              # Sidebar: logo Aly, nav custom (Material icons), lang toggle, date pickers + presets 7d/30d (on_click callbacks). Sin export — descarga vive en Alertas
 │   ├── kpi_row.py              # KPI cards HTML custom: accent bar + icon + sparkline SVG + delta pill. ICONS dict reutilizable
 │   └── charts.py               # Fábrica Plotly: bar_h, donut, choropleth (silueta flat + dots), bar_v
 ├── utils/
@@ -61,26 +61,32 @@ Aly_dashboard/
 |---|---|
 | `public.users_interactions` | `conversation_id`, `client_number`, `role`, `message`, `timestamp`, `status`, `created_at` |
 | `public.users_data` | `number`, `name`, `country`, `gender`, `region`, `email`, `created_at` |
-| `public.conversations_data` | `conversation_id`, `user_number`, `conversation_date`, `summary`, `keywords`, `flags`, `session` |
+| `public.conversations_data` | `conversation_id`, `user_number`, `conversation_date`, `summary`, `keywords`, `flags`, `session`, `reviewed_at` (TIMESTAMPTZ — null si pendiente) |
 | `vector_aly.rag_embeddings` | `project`, `document_name`, `topics`, `entities`, `key_phrases`, `chunk_index` |
 
 ---
 
 ## Queries en db.py
+Todas las queries de tiempo convierten a **GMT-5 (`America/Bogota`)** vía `AT TIME ZONE` antes de filtrar/extraer hora. Constante `TZ` arriba del módulo.
+
+- `fetch_df(query, params)` → DataFrame (lecturas)
+- `execute(query, params)` → rowcount (escrituras INSERT/UPDATE/DELETE)
 - `get_user_kpis(from, to)` → dict n_users, n_sessions
 - `get_messages_count(from, to)` → int
-- `get_hourly_distribution(from, to)` → df hour/messages (no se usa actualmente en UI — disponible)
+- `get_hourly_distribution(from, to)` → df hour/messages (hora en GMT-5; no se usa actualmente en UI — disponible)
 - `get_users_by_country/gender/region(from, to)` → df
-- `get_daily_activity(from, to)` → df day/messages/users/**sessions** (sessions se usa para sparklines de Inicio)
-- `get_activity_heatmap(from, to)` → df dow/hour/messages
+- `get_daily_activity(from, to)` → df day/messages/users/**sessions** (day en GMT-5; sessions se usa para sparklines de Inicio)
+- `get_activity_heatmap(from, to)` → df dow/hour/messages (en GMT-5)
 - `get_conversation_metrics(from, to)` → dict métricas agregadas (incluye `avg_msg_per_user`)
 - `get_kpi_deltas(from, to)` → dict deltas fraccionales vs período anterior
 - `get_conversations_data(from, to)` → df completo de conversations_data
 - `get_summaries(from, to, limit)` → df resúmenes recientes
-- `get_flags_data(from, to)` → df conversaciones con flags (todas, sin filtrar severidad)
+- `get_flags_data(from, to)` → df conversaciones con flags + `reviewed_at` (en GMT-5)
+- `mark_flag_reviewed(conv_id)` → UPDATE … SET reviewed_at = NOW()
+- `unmark_flag_reviewed(conv_id)` → UPDATE … SET reviewed_at = NULL
 - `get_flag_counts_by_user(from, to)` → df user_number/n_flags (solo HIGH-/MEDIUM-)
-- `get_leaderboard(from, to, limit)` → df top usuarios por mensajes totales
-- `get_interactions_export(from, to)` → df para Excel export de interacciones
+- `get_leaderboard(from, to, limit)` → df top usuarios (last_seen / days_active en GMT-5)
+- `get_interactions_export(from, to)` → df para Excel export de interacciones (queda disponible aunque ya no se exponga en sidebar)
 - `get_messages_by_conversation_ids(conv_ids)` → df mensajes para lista de conversation_ids
 - `get_user_conversations(user_number, from, to)` → df conversaciones de un usuario (drill-down)
 - `get_user_messages(user_number, from, to)` → df mensajes de un usuario (drill-down)
@@ -106,13 +112,15 @@ Aly_dashboard/
 
 ## Convenciones obligatorias
 - **SQL**: siempre parametrizado con `%s`. Nunca f-strings con datos externos. `_date_filter()` construye el WHERE.
+- **Zona horaria**: la DB guarda timestamptz en UTC, pero la UI opera en **GMT-5 (`America/Bogota`)**. Toda query nueva que extraiga hora/día o filtre por fecha debe convertir con `AT TIME ZONE '{TZ}'` (constante en `utils/db.py`). El "today" del sidebar también se calcula con `ZoneInfo("America/Bogota")`.
 - **Filtros globales**: en `st.session_state` (`filter_from`, `filter_to`). Inicializados en `components/filters.py`. Páginas los leen con `get_filters()`.
-- **Widgets Streamlit**: si un widget usa `key=`, NO pasar también `value=` — Streamlit lanza warning. Usar session_state para valor inicial.
+- **Widgets Streamlit**: si un widget usa `key=`, NO pasar también `value=` — Streamlit lanza warning. Usar session_state para valor inicial. Para presets que mutan widget keys (ej. `7d`/`30d`), usar `on_click` callbacks — asignar a `st.session_state[key]` después de renderizar el widget se ignora silenciosamente.
 - **Texto**: todo via `t("key")` de `utils/i18n.py`. Agregar claves nuevas en ambos idiomas.
 - **CSS**: inyectado con `st.html(css)` en `utils/styles.inject()`. HTML de componentes sí usa `st.markdown(unsafe_allow_html=True)` (ver `hero_banner`, `card_header`, `arc_row`, `kpi_row`).
 - **Colores**: siempre desde el dict `COLORS` de `utils/styles.py`. No hardcodear hex.
 - **Números de teléfono**: enmascarar en la UI (primeros 4 dígitos + `****` + últimos 2). El Excel de alertas exporta el número sin mask intencionalmente para el equipo de respuesta.
 - **Íconos del sidebar**: override CSS para que las ligatures de Material Symbols no hereden `Open Sans` del selector global `*` del sidebar (ver `utils/styles.py`).
+- **Estado compartido entre usuarios**: persistir en Supabase, no en `st.session_state` (que es por sesión de browser). Ej.: `reviewed_at` de las flags vive en `conversations_data`, no en memoria.
 
 ---
 
@@ -161,7 +169,7 @@ Aly_Apapachar (bot) → Conversation Closer → Supabase → este dashboard
 |---|---|
 | `public.users_interactions` | `bot.py` (cada mensaje) |
 | `public.users_data` | `onboarding_agent.py` (registro nuevo usuario) |
-| `public.conversations_data` | Conversation Closer (al cerrar sesión) |
+| `public.conversations_data` | Conversation Closer escribe la fila inicial. El **dashboard** escribe `reviewed_at` cuando el equipo marca la flag como revisada |
 | `vector_aly.rag_embeddings` | scripts de ingest |
 
 ---
