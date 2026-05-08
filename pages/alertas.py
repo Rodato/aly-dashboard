@@ -102,13 +102,12 @@ else:
     # ── "Hide reviewed" toggle ────────────────────────────────────────────────
     hide_reviewed = st.toggle(t("hide_reviewed"), value=False)
 
-    # Session state for reviewed flags
-    if "reviewed_flags" not in st.session_state:
-        st.session_state["reviewed_flags"] = set()
+    # reviewed_at viene de Supabase. Es NaT cuando aún no se ha revisado.
+    df_flags["reviewed_at"] = pd.to_datetime(df_flags.get("reviewed_at"), errors="coerce")
 
     working = df_flags.copy()
     if hide_reviewed:
-        working = working[~working["conversation_id"].astype(str).isin(st.session_state["reviewed_flags"])]
+        working = working[working["reviewed_at"].isna()]
 
     # Build display dataframe
     display = working[["conversation_date", "conversation_id", "user_number", "flags", "_tipo"]].copy()
@@ -185,14 +184,15 @@ else:
     )
 
     for _, row in working.iterrows():
-        conv_id  = str(row.get("conversation_id", "—"))
-        fecha    = str(row.get("conversation_date", ""))[:16]
-        flag     = str(row.get("flags", ""))
-        summary  = str(row.get("summary", "")) if row.get("summary") else ""
-        severity = row.get("_tipo", "other")
-        emoji    = _flag_emoji(severity)
-        is_reviewed = conv_id in st.session_state["reviewed_flags"]
-        reviewed_tag = "  ✅" if is_reviewed else ""
+        conv_id      = str(row.get("conversation_id", "—"))
+        fecha        = str(row.get("conversation_date", ""))[:16]
+        flag         = str(row.get("flags", ""))
+        summary      = str(row.get("summary", "")) if row.get("summary") else ""
+        severity     = row.get("_tipo", "other")
+        emoji        = _flag_emoji(severity)
+        reviewed_at  = row.get("reviewed_at")
+        is_reviewed  = pd.notna(reviewed_at)
+        reviewed_tag = f"  ✅ {pd.Timestamp(reviewed_at).strftime('%Y-%m-%d %H:%M')}" if is_reviewed else ""
 
         with st.expander(f"{emoji}  {fecha}  ·  `{conv_id}`{reviewed_tag}"):
             st.markdown(
@@ -218,7 +218,11 @@ else:
                 value=is_reviewed,
                 key=f"rev_{conv_id}",
             )
-            if checked:
-                st.session_state["reviewed_flags"].add(conv_id)
-            else:
-                st.session_state["reviewed_flags"].discard(conv_id)
+            # Persistimos a Supabase solo cuando hay cambio real respecto al
+            # estado en DB. El rerun trae la fila actualizada (con reviewed_at).
+            if checked != is_reviewed:
+                if checked:
+                    db.mark_flag_reviewed(conv_id)
+                else:
+                    db.unmark_flag_reviewed(conv_id)
+                st.rerun()

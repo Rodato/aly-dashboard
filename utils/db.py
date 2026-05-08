@@ -26,6 +26,14 @@ def fetch_df(query: str, params=None) -> pd.DataFrame:
             return pd.DataFrame(rows)
 
 
+def execute(query: str, params=None) -> int:
+    """Run a write query (INSERT/UPDATE/DELETE) and return affected rowcount."""
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, params or [])
+            return cur.rowcount
+
+
 # ---------------------------------------------------------------------------
 # KPI queries
 # ---------------------------------------------------------------------------
@@ -314,7 +322,8 @@ def get_flags_data(date_from=None, date_to=None) -> pd.DataFrame:
     where, params = _date_filter("conversation_date", date_from, date_to,
                                  extra="flags IS NOT NULL AND flags != ''")
     query = f"""
-        SELECT conversation_id, user_number, conversation_date, flags, summary
+        SELECT conversation_id, user_number, conversation_date, flags, summary,
+               reviewed_at AT TIME ZONE '{TZ}' AS reviewed_at
         FROM public.conversations_data
         {where}
         ORDER BY conversation_date DESC
@@ -323,6 +332,26 @@ def get_flags_data(date_from=None, date_to=None) -> pd.DataFrame:
         return fetch_df(query, params)
     except Exception:
         return pd.DataFrame()
+
+
+def mark_flag_reviewed(conversation_id: str) -> int:
+    """Stamp reviewed_at = NOW() on a conversation. Returns affected rowcount."""
+    return execute(
+        "UPDATE public.conversations_data "
+        "SET reviewed_at = NOW() "
+        "WHERE conversation_id = %s",
+        [str(conversation_id)],
+    )
+
+
+def unmark_flag_reviewed(conversation_id: str) -> int:
+    """Clear reviewed_at on a conversation. Returns affected rowcount."""
+    return execute(
+        "UPDATE public.conversations_data "
+        "SET reviewed_at = NULL "
+        "WHERE conversation_id = %s",
+        [str(conversation_id)],
+    )
 
 
 # ---------------------------------------------------------------------------
