@@ -276,15 +276,7 @@ def choropleth_colombia(df: pd.DataFrame, region_col: str, value_col: str,
         ],
         marker_line_color="#FFFFFF",
         marker_line_width=0.6,
-        showscale=True,
-        colorbar=dict(
-            thickness=8,
-            len=0.7,
-            x=1.0, xanchor="left",
-            tickfont=dict(size=10, color=COLORS["text_secondary"]),
-            outlinewidth=0,
-            title=None,
-        ),
+        showscale=False,
         hovertemplate="<b>%{location}</b><br>%{z} usuarios<extra></extra>",
     ))
     fig.update_geos(
@@ -302,6 +294,6 @@ def choropleth_colombia(df: pd.DataFrame, region_col: str, value_col: str,
             font=dict(family="Open Sans, sans-serif", size=11),
         ),
         height=height,
-        margin=dict(l=0, r=40, t=8, b=8),
+        margin=dict(l=0, r=0, t=8, b=8),
     )
     return fig

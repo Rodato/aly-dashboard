@@ -76,7 +76,7 @@ with col_map:
     if df_region.empty:
         st.info(t("no_data"))
     else:
-        fig_col = choropleth_colombia(df_region, "region", "n_users", height=460)
+        fig_col = choropleth_colombia(df_region, "region", "n_users", height=440)
         st.plotly_chart(fig_col, use_container_width=True)
         if unmatched:
             st.caption(f"⚠️ Regiones sin mapear: {', '.join(unmatched)}")
