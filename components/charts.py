@@ -1,5 +1,10 @@
 """Centralized Plotly chart factory — consistent styling across all pages."""
 
+import json
+import unicodedata
+from functools import lru_cache
+from pathlib import Path
+
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -174,4 +179,129 @@ def choropleth(df: pd.DataFrame, locations: str, color: str, title: str = "",
         layout["margin"] = dict(l=0, r=0, t=8, b=8)
 
     fig.update_layout(**layout)
+    return fig
+
+
+# ── Colombia department choropleth ───────────────────────────────────────────
+
+_COLOMBIA_GEOJSON_PATH = (
+    Path(__file__).parent.parent / "data" / "colombia_departments.geojson"
+)
+_COLOMBIA_FEATURE_KEY = "properties.NOMBRE_DPT"
+
+
+@lru_cache(maxsize=1)
+def _load_colombia_geojson() -> dict:
+    with open(_COLOMBIA_GEOJSON_PATH, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _normalize_region(s) -> str:
+    if not s:
+        return ""
+    s = unicodedata.normalize("NFD", str(s))
+    s = "".join(c for c in s if unicodedata.category(c) != "Mn")
+    return s.strip().lower()
+
+
+_COLOMBIA_ALIASES = {
+    # User-input form (normalized) → GeoJSON canonical (NOMBRE_DPT)
+    "bogota":               "SANTAFE DE BOGOTA D.C",
+    "bogota dc":            "SANTAFE DE BOGOTA D.C",
+    "bogota d.c":           "SANTAFE DE BOGOTA D.C",
+    "bogota d.c.":          "SANTAFE DE BOGOTA D.C",
+    "bogota distrito capital": "SANTAFE DE BOGOTA D.C",
+    "distrito capital":     "SANTAFE DE BOGOTA D.C",
+    "san andres":           "ARCHIPIELAGO DE SAN ANDRES PROVIDENCIA Y SANTA CATALINA",
+    "san andres y providencia": "ARCHIPIELAGO DE SAN ANDRES PROVIDENCIA Y SANTA CATALINA",
+    "san andres providencia y santa catalina": "ARCHIPIELAGO DE SAN ANDRES PROVIDENCIA Y SANTA CATALINA",
+    "guajira":              "LA GUAJIRA",
+    "valle":                "VALLE DEL CAUCA",
+}
+
+
+@lru_cache(maxsize=1)
+def colombia_region_lookup() -> dict[str, str]:
+    """Map normalized department name → canonical GeoJSON name."""
+    geojson = _load_colombia_geojson()
+    lookup = {
+        _normalize_region(f["properties"]["NOMBRE_DPT"]): f["properties"]["NOMBRE_DPT"]
+        for f in geojson["features"]
+    }
+    lookup.update(_COLOMBIA_ALIASES)
+    return lookup
+
+
+def choropleth_colombia(df: pd.DataFrame, region_col: str, value_col: str,
+                        height: int = 380) -> go.Figure:
+    """Choropleth of Colombian departments shaded by value_col.
+
+    All 33 departments are always rendered; ones without data fall back to a
+    light gray base so the full silhouette of Colombia stays visible.
+    """
+    geojson = _load_colombia_geojson()
+    lookup  = colombia_region_lookup()
+
+    # Aggregate user counts per canonical department name
+    df = df.copy()
+    df["_dept"] = df[region_col].apply(lambda r: lookup.get(_normalize_region(r)))
+    agg = (
+        df.dropna(subset=["_dept"])
+          .groupby("_dept")[value_col].sum()
+          .to_dict()
+    )
+
+    # Build a row per geojson feature so every department renders
+    all_depts = [f["properties"]["NOMBRE_DPT"] for f in geojson["features"]]
+    full = pd.DataFrame({
+        "_dept": all_depts,
+        value_col: [int(agg.get(d, 0)) for d in all_depts],
+    })
+
+    max_v = max(int(full[value_col].max()), 1)
+
+    fig = go.Figure(go.Choropleth(
+        geojson=geojson,
+        locations=full["_dept"],
+        z=full[value_col],
+        zmin=0,
+        zmax=max_v,
+        featureidkey=_COLOMBIA_FEATURE_KEY,
+        colorscale=[
+            [0.0,  "#E5E7EB"],   # base gray for depts with 0 users
+            [0.01, "#DBEAFE"],
+            [0.25, "#93C5FD"],
+            [0.6,  "#3B82F6"],
+            [1.0,  COLORS["accent"]],
+        ],
+        marker_line_color="#FFFFFF",
+        marker_line_width=0.6,
+        showscale=True,
+        colorbar=dict(
+            thickness=8,
+            len=0.7,
+            x=1.0, xanchor="left",
+            tickfont=dict(size=10, color=COLORS["text_secondary"]),
+            outlinewidth=0,
+            title=None,
+        ),
+        hovertemplate="<b>%{location}</b><br>%{z} usuarios<extra></extra>",
+    ))
+    fig.update_geos(
+        fitbounds="locations",
+        visible=False,
+        bgcolor=COLORS["bg_card"],
+    )
+    fig.update_layout(
+        paper_bgcolor=COLORS["bg_card"],
+        plot_bgcolor=COLORS["bg_card"],
+        font=dict(family="Open Sans, sans-serif", size=11, color=COLORS["text"]),
+        hoverlabel=dict(
+            bgcolor=COLORS["bg_card"],
+            bordercolor=COLORS["border"],
+            font=dict(family="Open Sans, sans-serif", size=11),
+        ),
+        height=height,
+        margin=dict(l=0, r=40, t=8, b=8),
+    )
     return fig

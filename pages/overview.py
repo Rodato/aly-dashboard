@@ -254,10 +254,8 @@ with col_stats:
         icon_svg=KPI_ICONS["chart"],
     )
     stat_list([
-        {"label": t("peak_hour"),   "value": peak_hour_txt},
-        {"label": t("peak_day"),    "value": peak_day_txt},
-        {"label": t("total_convs"), "value": f"{conv_m['total_conversations']:,}"},
-        {"label": t("avg_msg_per_conv"), "value": f"{conv_m['avg_msg_per_conv']:.1f}"},
+        {"label": t("peak_hour"), "value": peak_hour_txt},
+        {"label": t("peak_day"),  "value": peak_day_txt},
     ])
 
 st.markdown("<div style='margin:1.2rem 0 0.25rem'></div>", unsafe_allow_html=True)

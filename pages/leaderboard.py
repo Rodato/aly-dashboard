@@ -360,6 +360,7 @@ if selected_rows:
     st.markdown("<div style='margin:1.3rem 0 0.25rem'></div>", unsafe_allow_html=True)
     card_header(
         title=f"{t('lb_detail_for')} {display_name}",
+        subtitle=f"📱 {user_number}",
         icon_svg=KPI_ICONS["users"],
     )
 

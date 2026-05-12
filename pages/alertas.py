@@ -213,11 +213,9 @@ else:
                     unsafe_allow_html=True,
                 )
 
-            checked = st.checkbox(
-                t("mark_reviewed"),
-                value=is_reviewed,
-                key=f"rev_{conv_id}",
-            )
+            checkbox_key = f"rev_{conv_id}"
+            st.session_state.setdefault(checkbox_key, is_reviewed)
+            checked = st.checkbox(t("mark_reviewed"), key=checkbox_key)
             # Persistimos a Supabase solo cuando hay cambio real respecto al
             # estado en DB. El rerun trae la fila actualizada (con reviewed_at).
             if checked != is_reviewed:
