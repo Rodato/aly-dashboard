@@ -32,15 +32,17 @@ Aly_dashboard/
 ├── .env                        # DATABASE_URL
 ├── app.py                      # Entry point — st.navigation (position="hidden"), CSS, render_sidebar()
 ├── pages/
-│   ├── overview.py             # Inicio: hero banner, 4 KPIs con sparkline, growth chart + stat_list (grid 2:1), heatmap bloques
-│   ├── usuarios.py             # Demografía: 4 KPIs, mapa silueta + arcos por región, tabla países (si >3)
+│   ├── overview.py             # Inicio: hero banner, 4 KPIs con sparkline, growth chart + stat_list (peak hour/day, grid 2:1), heatmap bloques
+│   ├── usuarios.py             # Demografía: 3 KPIs (users, regiones, msg/usuario), layout 2:1 — choropleth Colombia (33 deptos) a la izquierda, cobertura + ranking top 10 a la derecha
 │   ├── conversaciones.py       # Keywords + resúmenes (no está en nav, en standby)
 │   ├── alertas.py              # Flags 🔴/🟠 (HIGH-/MEDIUM-), export Excel con transcripción, "marcar revisado" persistido en Supabase (reviewed_at)
-│   └── leaderboard.py          # Top usuarios: podio, bar top 10, tabla top 20 con Flags 🚩, drill-down con tabs
+│   └── leaderboard.py          # Top usuarios: podio, bar top 10, tabla top 20 con Flags 🚩, drill-down con tabs (header muestra teléfono completo del usuario)
 ├── components/
 │   ├── filters.py              # Sidebar: logo Aly, nav custom (Material icons), lang toggle, date pickers + presets 7d/30d (on_click callbacks). Sin export — descarga vive en Alertas
 │   ├── kpi_row.py              # KPI cards HTML custom: accent bar + icon + sparkline SVG + delta pill. ICONS dict reutilizable
-│   └── charts.py               # Fábrica Plotly: bar_h, donut, choropleth (silueta flat + dots), bar_v
+│   └── charts.py               # Fábrica Plotly: bar_h, donut, bar_v, choropleth (silueta flat + dots), choropleth_colombia (departamentos con aliases)
+├── data/
+│   └── colombia_departments.geojson  # GeoJSON bundled (33 deptos, featureidkey="properties.NOMBRE_DPT")
 ├── utils/
 │   ├── db.py                   # Todas las queries SQL
 │   ├── i18n.py                 # Traducciones ES/EN via t("key")
@@ -144,7 +146,8 @@ La lógica de clasificación vive en `_classify_flag()` en `pages/alertas.py`. T
 - **Accent principal**: `#0273e5` · **Navy**: `#110079` · **Amarillo**: `#FFCF24` · **Naranja**: `#F15B22`
 - **Positivo/negativo**: `#22C55E` / `#F15B22`
 - **Heatmap**: `go.Heatmap` con `xgap=3, ygap=3` para bloques discretos tipo GitHub contributions; paleta gray→blue→accent.
-- **Mapa de países**: `choropleth()` en charts.py renderiza **scattergeo silueta plana** — land `#D1D5DB`, sin bordes de países/costas, dots accent blue con halo soft bajo cada dot.
+- **Mapa de países**: `choropleth()` en charts.py renderiza **scattergeo silueta plana** — land `#D1D5DB`, sin bordes de países/costas, dots accent blue con halo soft bajo cada dot. **No se usa en Usuarios actualmente** (se reemplazó por el mapa de Colombia) pero la función queda disponible.
+- **Mapa de Colombia**: `choropleth_colombia()` en charts.py — `go.Choropleth` con GeoJSON local (`data/colombia_departments.geojson`). Siempre renderiza los 33 departamentos (deptos sin datos en gris `#E5E7EB`); rampa `#DBEAFE→#3B82F6→accent` para deptos con usuarios. `showscale=False` (la cobertura ya está en el panel lateral). Aliases para normalizar variantes de input: `bogota`→`SANTAFE DE BOGOTA D.C`, `san andres`→`ARCHIPIELAGO ...`, `guajira`→`LA GUAJIRA`, `valle`→`VALLE DEL CAUCA`. Las regiones que no matchean ningún departamento se listan como caption bajo el mapa.
 
 ---
 
