@@ -13,6 +13,24 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 # día o filtrar por rango.
 TZ = "America/Bogota"
 
+# Cuentas de testing/eval que escriben a las mismas tablas que el bot real
+# (vienen del repo hermano aly-evals: benchmarks, smoke tests, verify, debug).
+# Se filtran SIEMPRE en queries del dashboard para no contaminar KPIs.
+_TEST_CLIENT_NUMBERS = (
+    "eval", "verify", "smoke", "smoke-test", "smoke-factual",
+    "debug-rank", "debug-ingest", "debug-format", "debug-format-fix",
+    "debug-fmt", "debug-disclaimer-v2",
+    "normal-clean", "clean-only", "cleanmanual-test",
+    "+5215512345678",
+)
+_TEST_CLIENT_LIKE = ("debug-%", "test-%", "smoke%")
+_TEST_CONV_LIKE = (
+    "eval-%", "verify-%", "trace-%", "debug-%",
+    "ingest-%", "rank-%", "smoke-%", "fmt-fix-%",
+    "discl-v2-%", "normal-clean-%", "clean-only-%",
+    "dump16-%", "cleanmanual-%", "%-test-%",
+)
+
 
 def get_connection():
     return psycopg2.connect(DATABASE_URL)
@@ -86,7 +104,11 @@ def get_hourly_distribution(date_from=None, date_to=None) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 
 def get_users_by_country(date_from=None, date_to=None) -> pd.DataFrame:
-    where_i, params_i = _date_filter("ui.created_at", date_from, date_to, extra="ud.country IS NOT NULL")
+    where_i, params_i = _date_filter(
+        "ui.created_at", date_from, date_to,
+        extra="ud.country IS NOT NULL",
+        client_col="ui.client_number", conv_col="ui.conversation_id",
+    )
     query = f"""
         SELECT ud.country, COUNT(DISTINCT ud.number) AS n_users
         FROM public.users_data ud
@@ -102,7 +124,11 @@ def get_users_by_country(date_from=None, date_to=None) -> pd.DataFrame:
 
 
 def get_users_by_gender(date_from=None, date_to=None) -> pd.DataFrame:
-    where_i, params_i = _date_filter("ui.created_at", date_from, date_to, extra="ud.gender IS NOT NULL")
+    where_i, params_i = _date_filter(
+        "ui.created_at", date_from, date_to,
+        extra="ud.gender IS NOT NULL",
+        client_col="ui.client_number", conv_col="ui.conversation_id",
+    )
     query = f"""
         SELECT ud.gender, COUNT(DISTINCT ud.number) AS n_users
         FROM public.users_data ud
@@ -118,7 +144,11 @@ def get_users_by_gender(date_from=None, date_to=None) -> pd.DataFrame:
 
 
 def get_users_by_region(date_from=None, date_to=None) -> pd.DataFrame:
-    where_i, params_i = _date_filter("ui.created_at", date_from, date_to, extra="ud.region IS NOT NULL")
+    where_i, params_i = _date_filter(
+        "ui.created_at", date_from, date_to,
+        extra="ud.region IS NOT NULL",
+        client_col="ui.client_number", conv_col="ui.conversation_id",
+    )
     query = f"""
         SELECT ud.region, COUNT(DISTINCT ud.number) AS n_users
         FROM public.users_data ud
@@ -280,7 +310,10 @@ def get_schema_info() -> pd.DataFrame:
 
 def get_conversations_data(date_from=None, date_to=None) -> pd.DataFrame:
     """Return all processed conversations with summary, keywords, flags."""
-    where, params = _date_filter("conversation_date", date_from, date_to)
+    where, params = _date_filter(
+        "conversation_date", date_from, date_to,
+        client_col="user_number",
+    )
     query = f"""
         SELECT
             conversation_id,
@@ -302,8 +335,11 @@ def get_conversations_data(date_from=None, date_to=None) -> pd.DataFrame:
 
 def get_summaries(date_from=None, date_to=None, limit: int = 20) -> pd.DataFrame:
     """Return recent conversation summaries."""
-    where, params = _date_filter("conversation_date", date_from, date_to,
-                                 extra="summary IS NOT NULL AND summary != ''")
+    where, params = _date_filter(
+        "conversation_date", date_from, date_to,
+        extra="summary IS NOT NULL AND summary != ''",
+        client_col="user_number",
+    )
     query = f"""
         SELECT conversation_id, user_number, conversation_date, summary
         FROM public.conversations_data
@@ -319,8 +355,11 @@ def get_summaries(date_from=None, date_to=None, limit: int = 20) -> pd.DataFrame
 
 def get_flags_data(date_from=None, date_to=None) -> pd.DataFrame:
     """Return conversations that have a flag value."""
-    where, params = _date_filter("conversation_date", date_from, date_to,
-                                 extra="flags IS NOT NULL AND flags != ''")
+    where, params = _date_filter(
+        "conversation_date", date_from, date_to,
+        extra="flags IS NOT NULL AND flags != ''",
+        client_col="user_number",
+    )
     query = f"""
         SELECT conversation_id, user_number, conversation_date, flags, summary,
                reviewed_at AT TIME ZONE '{TZ}' AS reviewed_at
@@ -360,7 +399,10 @@ def unmark_flag_reviewed(conversation_id: str) -> int:
 
 def get_leaderboard(date_from=None, date_to=None, limit: int = 20) -> pd.DataFrame:
     """Return top users ranked by total messages sent, with engagement metrics."""
-    where, params = _date_filter("ui.created_at", date_from, date_to)
+    where, params = _date_filter(
+        "ui.created_at", date_from, date_to,
+        client_col="ui.client_number", conv_col="ui.conversation_id",
+    )
     query = f"""
         SELECT
             ui.client_number,
@@ -392,6 +434,7 @@ def get_flag_counts_by_user(date_from=None, date_to=None) -> pd.DataFrame:
     where, params = _date_filter(
         "conversation_date", date_from, date_to,
         extra="flags IS NOT NULL AND flags != ''",
+        client_col="user_number",
     )
     query = f"""
         SELECT user_number,
@@ -443,7 +486,10 @@ def get_user_conversations(user_number, date_from=None, date_to=None) -> pd.Data
     Joins through conversation_id from users_interactions to avoid any
     format mismatch between client_number and conversations_data.user_number.
     """
-    date_where, date_params = _date_filter("ui.created_at", date_from, date_to)
+    date_where, date_params = _date_filter(
+        "ui.created_at", date_from, date_to,
+        client_col=None, conv_col=None,
+    )
     if date_where:
         full_where = "WHERE ui.client_number = %s AND " + date_where[len("WHERE "):]
     else:
@@ -469,7 +515,10 @@ def get_user_conversations(user_number, date_from=None, date_to=None) -> pd.Data
 
 def get_user_messages(user_number, date_from=None, date_to=None) -> pd.DataFrame:
     """Return all interaction messages for a specific user, ordered chronologically."""
-    date_where, date_params = _date_filter("created_at", date_from, date_to)
+    date_where, date_params = _date_filter(
+        "created_at", date_from, date_to,
+        client_col=None, conv_col=None,
+    )
     if date_where:
         full_where = "WHERE client_number = %s AND " + date_where[len("WHERE "):]
     else:
@@ -507,12 +556,24 @@ def get_messages_by_conversation_ids(conv_ids: list) -> pd.DataFrame:
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _date_filter(col: str, date_from, date_to, extra: str = ""):
-    """Build a WHERE clause for date range + optional extra condition.
+def _date_filter(
+    col: str,
+    date_from,
+    date_to,
+    extra: str = "",
+    client_col="client_number",
+    conv_col="conversation_id",
+):
+    """Build a WHERE clause for date range + test exclusion + optional extra.
 
     El rango de fechas se interpreta en la zona local (America/Bogota / GMT-5),
     para que un filtro "del 1 al 7 de mayo" incluya todos los mensajes vistos
     como ese rango por el equipo en Colombia/México, no en UTC.
+
+    El filtro de tests/eval se aplica SIEMPRE por defecto (ver
+    _TEST_CLIENT_NUMBERS / _TEST_CLIENT_LIKE / _TEST_CONV_LIKE arriba). Pasar
+    `client_col=None` y/o `conv_col=None` para tablas donde esa columna no
+    existe o se quiere apagar el filtro (drill-downs por usuario explícito).
     """
     clauses = []
     params: list = []
@@ -524,6 +585,17 @@ def _date_filter(col: str, date_from, date_to, extra: str = ""):
     if date_to:
         clauses.append(f"({col} AT TIME ZONE '{TZ}')::date < %s")
         params.append(str(date_to))
+    if client_col:
+        placeholders = ",".join(["%s"] * len(_TEST_CLIENT_NUMBERS))
+        clauses.append(f"{client_col} NOT IN ({placeholders})")
+        params.extend(_TEST_CLIENT_NUMBERS)
+        for pat in _TEST_CLIENT_LIKE:
+            clauses.append(f"{client_col} NOT LIKE %s")
+            params.append(pat)
+    if conv_col:
+        for pat in _TEST_CONV_LIKE:
+            clauses.append(f"{conv_col} NOT LIKE %s")
+            params.append(pat)
     if clauses:
         return "WHERE " + " AND ".join(clauses), params
     return "", params
