@@ -16,6 +16,8 @@ python3 -m streamlit run app.py
 ## Proyecto
 Dashboard operativo privado para **Apapáchar** (chatbot WhatsApp RAG, crianza 0-5 años, Fundación Apapacho). Marca visible: **Aly**.
 
+**Multi-bot — alcance del dashboard:** la DB de Supabase es compartida. Hoy solo el bot **apapachar** escribe a `users_interactions/users_data/conversations_data` (el bot **demo** no usa RAG → no toca el código de Aly → no persiste a estas tablas). Próximamente entra un bot del programa de **México** que sí va a escribir a la misma DB. Para que ese futuro no contamine los KPIs, el plan acordado (pendiente de implementar el dev del bot) es agregar una columna `bot_id` a las 3 tablas, con backfill one-shot a `'apapachar'`, **sin** default y `NOT NULL` tras la migración. Cada deploy debe setear `BOT_ID` explícito o el bot falla al arrancar (fail-fast). Cuando esté en prod, el dashboard agregará `WHERE bot_id = 'apapachar'` a `_date_filter`. Ver memoria `pending-bot-id`.
+
 ---
 
 ## Stack
@@ -71,6 +73,8 @@ Aly_dashboard/
 ## Queries en db.py
 Todas las queries de tiempo convierten a **GMT-5 (`America/Bogota`)** vía `AT TIME ZONE` antes de filtrar/extraer hora. Constante `TZ` arriba del módulo.
 
+`_date_filter()` además excluye **siempre** cuentas de testing/eval que vienen del repo hermano `aly-evals` (benchmarks, smoke tests, verify, debug). Las listas viven al inicio de `utils/db.py`: `_TEST_CLIENT_NUMBERS`, `_TEST_CLIENT_LIKE`, `_TEST_CONV_LIKE`. Si aly-evals agrega un nuevo prefijo sentinel, sumarlo a la tupla correspondiente. Queries sobre `conversations_data` pasan `client_col="user_number"`; queries con alias pasan nombres calificados (`client_col="ui.client_number"`). Los drill-downs por usuario explícito apagan el filtro con `client_col=None, conv_col=None`.
+
 - `fetch_df(query, params)` → DataFrame (lecturas)
 - `execute(query, params)` → rowcount (escrituras INSERT/UPDATE/DELETE)
 - `get_user_kpis(from, to)` → dict n_users, n_sessions
@@ -123,6 +127,7 @@ Todas las queries de tiempo convierten a **GMT-5 (`America/Bogota`)** vía `AT T
 - **Números de teléfono**: enmascarar en la UI (primeros 4 dígitos + `****` + últimos 2). El Excel de alertas exporta el número sin mask intencionalmente para el equipo de respuesta.
 - **Íconos del sidebar**: override CSS para que las ligatures de Material Symbols no hereden `Open Sans` del selector global `*` del sidebar (ver `utils/styles.py`).
 - **Estado compartido entre usuarios**: persistir en Supabase, no en `st.session_state` (que es por sesión de browser). Ej.: `reviewed_at` de las flags vive en `conversations_data`, no en memoria.
+- **Filtrado de cuentas test**: toda query nueva sobre `users_interactions/conversations_data` debe pasar por `_date_filter()` para heredar el filtro de aly-evals automáticamente. No bypassear con `fetch_df` directo sin pensar en qué datos estás trayendo.
 
 ---
 
@@ -153,7 +158,7 @@ La lógica de clasificación vive en `_classify_flag()` en `pages/alertas.py`. T
 
 ## Proyecto Complementario: Aly_Apapachar
 
-**Ubicación**: `/Users/daniel/Desktop/Dev/Aly_Apapachar/`
+**Ubicación**: `/Users/daniel/Documents/Dev/Aly_Apapachar/`
 
 Aly_Apapachar es el bot WhatsApp (LangGraph + MongoDB + Twilio) que **genera los datos** que este dashboard visualiza.
 
@@ -174,6 +179,9 @@ Aly_Apapachar (bot) → Conversation Closer → Supabase → este dashboard
 | `public.users_data` | `onboarding_agent.py` (registro nuevo usuario) |
 | `public.conversations_data` | Conversation Closer escribe la fila inicial. El **dashboard** escribe `reviewed_at` cuando el equipo marca la flag como revisada |
 | `vector_aly.rag_embeddings` | scripts de ingest |
+
+### Otros escritores (ruido conocido)
+`aly-evals` (repo hermano en `~/Documents/Dev/aly-evals/`) corre benchmarks contra el bot y termina escribiendo cientos de filas sentinel (`client_number IN ('eval','verify','smoke',…)`, `conversation_id LIKE 'eval-%' / 'verify-%' / 'debug-%' / …`). El filtro en `_date_filter()` las excluye automáticamente del dashboard. Antes del filtro (commit `d981c15`, 2026-05-27), `eval` solo aportaba 458 conversaciones / 918 mensajes.
 
 ---
 
