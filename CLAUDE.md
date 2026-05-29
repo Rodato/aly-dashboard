@@ -20,7 +20,9 @@ Dashboard operativo privado para **Apapáchar** (chatbot WhatsApp RAG, crianza 0
 
 El dashboard **detecta automáticamente** los `bot_id` disponibles en la DB (`utils/db.py:get_available_bot_ids()`) y muestra un **selector en el sidebar** (arriba de los filtros de fecha). El usuario elige qué bot ver; todas las queries filtran por el `bot_id` seleccionado. El valor seleccionado vive en `st.session_state["selected_bot"]` y se pasa via `get_filters()["bot_id"]`.
 
-**Plan futuro**: cuando haya autenticación de usuarios, el selector mostrará solo los bots a los que el usuario logueado tiene permiso. Por ahora muestra todos los bots disponibles en la DB.
+**Estado actual (2026-05-29)**: el selector muestra **todos los bots** disponibles en la DB sin restricciones. Cualquier usuario puede ver cualquier bot.
+
+**Pendiente para después**: implementar sistema de permisos por usuario. Cuando haya autenticación, agregar tabla `user_bot_permissions` y filtrar `get_available_bot_ids()` según el usuario logueado. La infraestructura ya está lista — solo falta la lógica de permisos.
 
 ---
 
