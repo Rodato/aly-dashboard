@@ -143,7 +143,9 @@ def get_users_by_country(date_from=None, date_to=None, bot_id=None) -> pd.DataFr
     query = f"""
         SELECT ud.country, COUNT(DISTINCT ud.number) AS n_users
         FROM public.users_data ud
-        JOIN public.users_interactions ui ON ui.client_number = ud.number
+        JOIN public.users_interactions ui
+            ON ui.client_number = ud.number
+            AND ui.bot_id = ud.bot_id
         {where_i}
         GROUP BY 1
         ORDER BY 2 DESC
@@ -163,7 +165,9 @@ def get_users_by_gender(date_from=None, date_to=None, bot_id=None) -> pd.DataFra
     query = f"""
         SELECT ud.gender, COUNT(DISTINCT ud.number) AS n_users
         FROM public.users_data ud
-        JOIN public.users_interactions ui ON ui.client_number = ud.number
+        JOIN public.users_interactions ui
+            ON ui.client_number = ud.number
+            AND ui.bot_id = ud.bot_id
         {where_i}
         GROUP BY 1
         ORDER BY 2 DESC
@@ -183,7 +187,9 @@ def get_users_by_region(date_from=None, date_to=None, bot_id=None) -> pd.DataFra
     query = f"""
         SELECT ud.region, COUNT(DISTINCT ud.number) AS n_users
         FROM public.users_data ud
-        JOIN public.users_interactions ui ON ui.client_number = ud.number
+        JOIN public.users_interactions ui
+            ON ui.client_number = ud.number
+            AND ui.bot_id = ud.bot_id
         {where_i}
         GROUP BY 1
         ORDER BY 2 DESC
@@ -429,7 +435,11 @@ def unmark_flag_reviewed(conversation_id: str) -> int:
 # ---------------------------------------------------------------------------
 
 def get_leaderboard(date_from=None, date_to=None, limit: int = 20, bot_id=None) -> pd.DataFrame:
-    """Return top users ranked by total messages sent, with engagement metrics."""
+    """Return top users ranked by total messages sent, with engagement metrics.
+
+    Joins users_data by BOTH number AND bot_id so each user's profile is
+    specific to the bot they're interacting with.
+    """
     where, params = _date_filter(
         "ui.created_at", date_from, date_to,
         client_col="ui.client_number", conv_col="ui.conversation_id", bot_col="ui.bot_id", bot_id=bot_id,
@@ -448,7 +458,9 @@ def get_leaderboard(date_from=None, date_to=None, limit: int = 20, bot_id=None) 
             )                                               AS avg_msg_per_conv,
             MAX(ui.created_at AT TIME ZONE '{TZ}')          AS last_seen
         FROM public.users_interactions ui
-        LEFT JOIN public.users_data ud ON ud.number = ui.client_number
+        LEFT JOIN public.users_data ud
+            ON ud.number = ui.client_number
+            AND ud.bot_id = ui.bot_id
         {where}
         GROUP BY ui.client_number, ud.name, ud.country
         ORDER BY total_messages DESC
@@ -632,7 +644,7 @@ def _date_filter(
         for pat in _TEST_CONV_LIKE:
             clauses.append(f"{conv_col} NOT LIKE %s")
             params.append(pat)
-    if bot_col and bot_id:
+    if bot_col and bot_id is not None:
         clauses.append(f"{bot_col} = %s")
         params.append(bot_id)
     if clauses:
