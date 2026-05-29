@@ -139,6 +139,7 @@ note.alignment = Alignment(horizontal="left", vertical="center")
 note.border = thin_border()
 ws.merge_cells(f"A{current_row+1}:F{current_row+1}")
 
-output = "/Users/daniel/Desktop/colores_aly_dashboard.xlsx"
+from pathlib import Path
+output = str(Path(__file__).resolve().parent / "colores_aly_dashboard.xlsx")
 wb.save(output)
 print(f"Guardado en: {output}")
