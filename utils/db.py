@@ -53,12 +53,43 @@ def execute(query: str, params=None) -> int:
 
 
 # ---------------------------------------------------------------------------
+# Bot ID discovery
+# ---------------------------------------------------------------------------
+
+def get_available_bot_ids() -> list[str]:
+    """Return list of distinct bot_id values present in users_interactions, excluding test accounts."""
+    # Build exclusion clauses for test accounts
+    placeholders = ",".join(["%s"] * len(_TEST_CLIENT_NUMBERS))
+    not_in_clause = f"client_number NOT IN ({placeholders})"
+    not_like_clauses = " AND ".join([f"client_number NOT LIKE %s" for _ in _TEST_CLIENT_LIKE])
+    conv_not_like_clauses = " AND ".join([f"conversation_id NOT LIKE %s" for _ in _TEST_CONV_LIKE])
+
+    params = list(_TEST_CLIENT_NUMBERS) + list(_TEST_CLIENT_LIKE) + list(_TEST_CONV_LIKE)
+
+    query = f"""
+        SELECT DISTINCT bot_id
+        FROM public.users_interactions
+        WHERE bot_id IS NOT NULL
+          AND bot_id != ''
+          AND {not_in_clause}
+          AND {not_like_clauses}
+          AND {conv_not_like_clauses}
+        ORDER BY bot_id
+    """
+    try:
+        df = fetch_df(query, params)
+        return df["bot_id"].tolist() if not df.empty else ["apapachar"]
+    except Exception:
+        return ["apapachar"]  # fallback
+
+
+# ---------------------------------------------------------------------------
 # KPI queries
 # ---------------------------------------------------------------------------
 
-def get_user_kpis(date_from=None, date_to=None) -> dict:
+def get_user_kpis(date_from=None, date_to=None, bot_id=None) -> dict:
     """Return unique users and sessions within optional date range."""
-    where, params = _date_filter("created_at", date_from, date_to)
+    where, params = _date_filter("created_at", date_from, date_to, bot_id=bot_id)
     query = f"""
         SELECT
             COUNT(DISTINCT client_number) AS n_users,
@@ -71,8 +102,8 @@ def get_user_kpis(date_from=None, date_to=None) -> dict:
     return {"n_users": int(row["n_users"]), "n_sessions": int(row["n_sessions"])}
 
 
-def get_messages_count(date_from=None, date_to=None) -> int:
-    where, params = _date_filter("created_at", date_from, date_to)
+def get_messages_count(date_from=None, date_to=None, bot_id=None) -> int:
+    where, params = _date_filter("created_at", date_from, date_to, bot_id=bot_id)
     query = f"""
         SELECT COUNT(*) AS n FROM public.users_interactions {where}
     """
@@ -84,9 +115,9 @@ def get_messages_count(date_from=None, date_to=None) -> int:
 # Time-of-day histogram
 # ---------------------------------------------------------------------------
 
-def get_hourly_distribution(date_from=None, date_to=None) -> pd.DataFrame:
+def get_hourly_distribution(date_from=None, date_to=None, bot_id=None) -> pd.DataFrame:
     """Return message count per hour of day (0-23)."""
-    where, params = _date_filter("created_at", date_from, date_to)
+    where, params = _date_filter("created_at", date_from, date_to, bot_id=bot_id)
     query = f"""
         SELECT
             EXTRACT(HOUR FROM created_at AT TIME ZONE '{TZ}') AS hour,
@@ -103,11 +134,11 @@ def get_hourly_distribution(date_from=None, date_to=None) -> pd.DataFrame:
 # User demographics (from users_data)
 # ---------------------------------------------------------------------------
 
-def get_users_by_country(date_from=None, date_to=None) -> pd.DataFrame:
+def get_users_by_country(date_from=None, date_to=None, bot_id=None) -> pd.DataFrame:
     where_i, params_i = _date_filter(
         "ui.created_at", date_from, date_to,
         extra="ud.country IS NOT NULL",
-        client_col="ui.client_number", conv_col="ui.conversation_id", bot_col="ui.bot_id",
+        client_col="ui.client_number", conv_col="ui.conversation_id", bot_col="ui.bot_id", bot_id=bot_id,
     )
     query = f"""
         SELECT ud.country, COUNT(DISTINCT ud.number) AS n_users
@@ -123,11 +154,11 @@ def get_users_by_country(date_from=None, date_to=None) -> pd.DataFrame:
         return pd.DataFrame(columns=["country", "n_users"])
 
 
-def get_users_by_gender(date_from=None, date_to=None) -> pd.DataFrame:
+def get_users_by_gender(date_from=None, date_to=None, bot_id=None) -> pd.DataFrame:
     where_i, params_i = _date_filter(
         "ui.created_at", date_from, date_to,
         extra="ud.gender IS NOT NULL",
-        client_col="ui.client_number", conv_col="ui.conversation_id", bot_col="ui.bot_id",
+        client_col="ui.client_number", conv_col="ui.conversation_id", bot_col="ui.bot_id", bot_id=bot_id,
     )
     query = f"""
         SELECT ud.gender, COUNT(DISTINCT ud.number) AS n_users
@@ -143,11 +174,11 @@ def get_users_by_gender(date_from=None, date_to=None) -> pd.DataFrame:
         return pd.DataFrame(columns=["gender", "n_users"])
 
 
-def get_users_by_region(date_from=None, date_to=None) -> pd.DataFrame:
+def get_users_by_region(date_from=None, date_to=None, bot_id=None) -> pd.DataFrame:
     where_i, params_i = _date_filter(
         "ui.created_at", date_from, date_to,
         extra="ud.region IS NOT NULL",
-        client_col="ui.client_number", conv_col="ui.conversation_id", bot_col="ui.bot_id",
+        client_col="ui.client_number", conv_col="ui.conversation_id", bot_col="ui.bot_id", bot_id=bot_id,
     )
     query = f"""
         SELECT ud.region, COUNT(DISTINCT ud.number) AS n_users
@@ -167,8 +198,8 @@ def get_users_by_region(date_from=None, date_to=None) -> pd.DataFrame:
 # Export — full filtered dataset
 # ---------------------------------------------------------------------------
 
-def get_interactions_export(date_from=None, date_to=None) -> pd.DataFrame:
-    where, params = _date_filter("created_at", date_from, date_to)
+def get_interactions_export(date_from=None, date_to=None, bot_id=None) -> pd.DataFrame:
+    where, params = _date_filter("created_at", date_from, date_to, bot_id=bot_id)
     query = f"""
         SELECT
             conversation_id, client_number, role, message,
@@ -184,9 +215,9 @@ def get_interactions_export(date_from=None, date_to=None) -> pd.DataFrame:
 # Analytics — new queries for redesigned dashboard
 # ---------------------------------------------------------------------------
 
-def get_daily_activity(date_from=None, date_to=None) -> pd.DataFrame:
+def get_daily_activity(date_from=None, date_to=None, bot_id=None) -> pd.DataFrame:
     """Return message, unique-user and session counts per calendar day."""
-    where, params = _date_filter("created_at", date_from, date_to)
+    where, params = _date_filter("created_at", date_from, date_to, bot_id=bot_id)
     query = f"""
         SELECT
             (created_at AT TIME ZONE '{TZ}')::date AS day,
@@ -201,9 +232,9 @@ def get_daily_activity(date_from=None, date_to=None) -> pd.DataFrame:
     return fetch_df(query, params)
 
 
-def get_activity_heatmap(date_from=None, date_to=None) -> pd.DataFrame:
+def get_activity_heatmap(date_from=None, date_to=None, bot_id=None) -> pd.DataFrame:
     """Return message counts indexed by day-of-week (0=Sun) and hour (0-23)."""
-    where, params = _date_filter("created_at", date_from, date_to)
+    where, params = _date_filter("created_at", date_from, date_to, bot_id=bot_id)
     query = f"""
         SELECT
             EXTRACT(DOW  FROM created_at AT TIME ZONE '{TZ}')::int AS dow,
@@ -217,9 +248,9 @@ def get_activity_heatmap(date_from=None, date_to=None) -> pd.DataFrame:
     return fetch_df(query, params)
 
 
-def get_conversation_metrics(date_from=None, date_to=None) -> dict:
+def get_conversation_metrics(date_from=None, date_to=None, bot_id=None) -> dict:
     """Return average messages per conversation and per-user averages."""
-    where, params = _date_filter("created_at", date_from, date_to)
+    where, params = _date_filter("created_at", date_from, date_to, bot_id=bot_id)
     query = f"""
         SELECT
             COUNT(*)                                    AS total_messages,
@@ -247,7 +278,7 @@ def get_conversation_metrics(date_from=None, date_to=None) -> dict:
     }
 
 
-def get_kpi_deltas(date_from: str, date_to: str) -> dict:
+def get_kpi_deltas(date_from: str, date_to: str, bot_id=None) -> dict:
     """Compare current period KPIs against the equivalent previous period.
 
     Returns a dict with keys: users_delta, sessions_delta, messages_delta
@@ -264,10 +295,10 @@ def get_kpi_deltas(date_from: str, date_to: str) -> dict:
     except Exception:
         return {"users_delta": None, "sessions_delta": None, "messages_delta": None}
 
-    current = get_user_kpis(date_from, date_to)
-    prev    = get_user_kpis(prev_from, prev_to)
-    curr_msg = get_messages_count(date_from, date_to)
-    prev_msg = get_messages_count(prev_from, prev_to)
+    current = get_user_kpis(date_from, date_to, bot_id=bot_id)
+    prev    = get_user_kpis(prev_from, prev_to, bot_id=bot_id)
+    curr_msg = get_messages_count(date_from, date_to, bot_id=bot_id)
+    prev_msg = get_messages_count(prev_from, prev_to, bot_id=bot_id)
 
     def _delta(curr, prev):
         if prev == 0:
@@ -308,11 +339,11 @@ def get_schema_info() -> pd.DataFrame:
 # conversations_data — summaries, keywords, flags
 # ---------------------------------------------------------------------------
 
-def get_conversations_data(date_from=None, date_to=None) -> pd.DataFrame:
+def get_conversations_data(date_from=None, date_to=None, bot_id=None) -> pd.DataFrame:
     """Return all processed conversations with summary, keywords, flags."""
     where, params = _date_filter(
         "conversation_date", date_from, date_to,
-        client_col="user_number", bot_col="bot_id",
+        client_col="user_number", bot_col="bot_id", bot_id=bot_id,
     )
     query = f"""
         SELECT
@@ -333,12 +364,12 @@ def get_conversations_data(date_from=None, date_to=None) -> pd.DataFrame:
         return pd.DataFrame()
 
 
-def get_summaries(date_from=None, date_to=None, limit: int = 20) -> pd.DataFrame:
+def get_summaries(date_from=None, date_to=None, limit: int = 20, bot_id=None) -> pd.DataFrame:
     """Return recent conversation summaries."""
     where, params = _date_filter(
         "conversation_date", date_from, date_to,
         extra="summary IS NOT NULL AND summary != ''",
-        client_col="user_number", bot_col="bot_id",
+        client_col="user_number", bot_col="bot_id", bot_id=bot_id,
     )
     query = f"""
         SELECT conversation_id, user_number, conversation_date, summary
@@ -353,12 +384,12 @@ def get_summaries(date_from=None, date_to=None, limit: int = 20) -> pd.DataFrame
         return pd.DataFrame()
 
 
-def get_flags_data(date_from=None, date_to=None) -> pd.DataFrame:
+def get_flags_data(date_from=None, date_to=None, bot_id=None) -> pd.DataFrame:
     """Return conversations that have a flag value."""
     where, params = _date_filter(
         "conversation_date", date_from, date_to,
         extra="flags IS NOT NULL AND flags != ''",
-        client_col="user_number", bot_col="bot_id",
+        client_col="user_number", bot_col="bot_id", bot_id=bot_id,
     )
     query = f"""
         SELECT conversation_id, user_number, conversation_date, flags, summary,
@@ -397,11 +428,11 @@ def unmark_flag_reviewed(conversation_id: str) -> int:
 # Leaderboard — top users by engagement
 # ---------------------------------------------------------------------------
 
-def get_leaderboard(date_from=None, date_to=None, limit: int = 20) -> pd.DataFrame:
+def get_leaderboard(date_from=None, date_to=None, limit: int = 20, bot_id=None) -> pd.DataFrame:
     """Return top users ranked by total messages sent, with engagement metrics."""
     where, params = _date_filter(
         "ui.created_at", date_from, date_to,
-        client_col="ui.client_number", conv_col="ui.conversation_id", bot_col="ui.bot_id",
+        client_col="ui.client_number", conv_col="ui.conversation_id", bot_col="ui.bot_id", bot_id=bot_id,
     )
     query = f"""
         SELECT
@@ -429,12 +460,12 @@ def get_leaderboard(date_from=None, date_to=None, limit: int = 20) -> pd.DataFra
         return pd.DataFrame()
 
 
-def get_flag_counts_by_user(date_from=None, date_to=None) -> pd.DataFrame:
+def get_flag_counts_by_user(date_from=None, date_to=None, bot_id=None) -> pd.DataFrame:
     """Return count of red+orange flags per user for the given period."""
     where, params = _date_filter(
         "conversation_date", date_from, date_to,
         extra="flags IS NOT NULL AND flags != ''",
-        client_col="user_number", bot_col="bot_id",
+        client_col="user_number", bot_col="bot_id", bot_id=bot_id,
     )
     query = f"""
         SELECT user_number,
@@ -480,7 +511,7 @@ def get_rag_summary() -> pd.DataFrame:
 # Per-user drill-down queries
 # ---------------------------------------------------------------------------
 
-def get_user_conversations(user_number, date_from=None, date_to=None) -> pd.DataFrame:
+def get_user_conversations(user_number, date_from=None, date_to=None, bot_id=None) -> pd.DataFrame:
     """Return all conversations_data rows for a specific user.
 
     Joins through conversation_id from users_interactions to avoid any
@@ -488,7 +519,7 @@ def get_user_conversations(user_number, date_from=None, date_to=None) -> pd.Data
     """
     date_where, date_params = _date_filter(
         "ui.created_at", date_from, date_to,
-        client_col=None, conv_col=None,
+        client_col=None, conv_col=None, bot_col="ui.bot_id", bot_id=bot_id,
     )
     if date_where:
         full_where = "WHERE ui.client_number = %s AND " + date_where[len("WHERE "):]
@@ -513,11 +544,11 @@ def get_user_conversations(user_number, date_from=None, date_to=None) -> pd.Data
         return pd.DataFrame()
 
 
-def get_user_messages(user_number, date_from=None, date_to=None) -> pd.DataFrame:
+def get_user_messages(user_number, date_from=None, date_to=None, bot_id=None) -> pd.DataFrame:
     """Return all interaction messages for a specific user, ordered chronologically."""
     date_where, date_params = _date_filter(
         "created_at", date_from, date_to,
-        client_col=None, conv_col=None,
+        client_col=None, conv_col=None, bot_col="bot_id", bot_id=bot_id,
     )
     if date_where:
         full_where = "WHERE client_number = %s AND " + date_where[len("WHERE "):]
@@ -564,6 +595,7 @@ def _date_filter(
     client_col="client_number",
     conv_col="conversation_id",
     bot_col="bot_id",
+    bot_id=None,
 ):
     """Build a WHERE clause for date range + test exclusion + bot_id filter + optional extra.
 
@@ -576,8 +608,8 @@ def _date_filter(
     `client_col=None` y/o `conv_col=None` para tablas donde esa columna no
     existe o se quiere apagar el filtro (drill-downs por usuario explícito).
 
-    El filtro bot_id = 'apapachar' también se aplica por defecto para excluir
-    datos del bot demo. Pasar `bot_col=None` para desactivarlo.
+    El filtro bot_id se aplica por defecto usando el valor pasado en `bot_id`
+    (si no se pasa, se omite el filtro). Pasar `bot_col=None` para desactivarlo.
     """
     clauses = []
     params: list = []
@@ -600,9 +632,9 @@ def _date_filter(
         for pat in _TEST_CONV_LIKE:
             clauses.append(f"{conv_col} NOT LIKE %s")
             params.append(pat)
-    if bot_col:
+    if bot_col and bot_id:
         clauses.append(f"{bot_col} = %s")
-        params.append("apapachar")
+        params.append(bot_id)
     if clauses:
         return "WHERE " + " AND ".join(clauses), params
     return "", params

@@ -16,16 +16,17 @@ from components.filters import get_filters
 filters   = get_filters()
 date_from = filters["date_from"]
 date_to   = filters["date_to"]
+bot_id    = filters["bot_id"]
 
 page_header(t("users_page_title"), t("users_page_sub"))
 
 
 # ── Data fetch ───────────────────────────────────────────────────────────────
 try:
-    df_region = db.get_users_by_region(date_from, date_to)
-    kpis      = db.get_user_kpis(date_from, date_to)
-    conv_m    = db.get_conversation_metrics(date_from, date_to)
-    deltas    = db.get_kpi_deltas(date_from, date_to)
+    df_region = db.get_users_by_region(date_from, date_to, bot_id=bot_id)
+    kpis      = db.get_user_kpis(date_from, date_to, bot_id=bot_id)
+    conv_m    = db.get_conversation_metrics(date_from, date_to, bot_id=bot_id)
+    deltas    = db.get_kpi_deltas(date_from, date_to, bot_id=bot_id)
 except Exception as e:
     st.error(f"Error de base de datos: {e}")
     st.stop()

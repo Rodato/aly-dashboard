@@ -14,6 +14,7 @@ from utils.styles import COLORS, page_header, card_header
 filters   = get_filters()
 date_from = filters["date_from"]
 date_to   = filters["date_to"]
+bot_id    = filters["bot_id"]
 
 page_header(t("alerts_page_title"), t("alerts_page_sub"))
 
@@ -50,7 +51,7 @@ def _flag_emoji(severity: str) -> str:
 
 # ── Load flags ────────────────────────────────────────────────────────────────
 try:
-    df_flags = db.get_flags_data(date_from, date_to)
+    df_flags = db.get_flags_data(date_from, date_to, bot_id=bot_id)
 except Exception as e:
     st.error(f"Error de base de datos: {e}")
     df_flags = pd.DataFrame()

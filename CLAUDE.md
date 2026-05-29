@@ -16,7 +16,11 @@ python3 -m streamlit run app.py
 ## Proyecto
 Dashboard operativo privado para **Apapáchar** (chatbot WhatsApp RAG, crianza 0-5 años, Fundación Apapacho). Marca visible: **Aly**.
 
-**Multi-bot — alcance del dashboard:** la DB de Supabase es compartida. Las 3 tablas (`users_interactions`, `users_data`, `conversations_data`) tienen columna `bot_id` (type `text`, `NOT NULL`, default `''`). El bot escribe `'apapachar'` o `'demo'` según `BOT_ID` env var. El dashboard filtra **solo `bot_id = 'apapachar'`** automáticamente en `_date_filter()` (`utils/db.py`) — todas las queries heredan este filtro por defecto. Para drill-downs por usuario explícito que deben ver todas las conversaciones sin importar bot_id, pasar `bot_col=None` a `_date_filter()`.
+**Multi-bot — alcance del dashboard:** la DB de Supabase es compartida. Las 3 tablas (`users_interactions`, `users_data`, `conversations_data`) tienen columna `bot_id` (type `text`, `NOT NULL`, default `''`). El bot escribe `'apapachar'` o `'demo'` según `BOT_ID` env var.
+
+El dashboard **detecta automáticamente** los `bot_id` disponibles en la DB (`utils/db.py:get_available_bot_ids()`) y muestra un **selector en el sidebar** (arriba de los filtros de fecha). El usuario elige qué bot ver; todas las queries filtran por el `bot_id` seleccionado. El valor seleccionado vive en `st.session_state["selected_bot"]` y se pasa via `get_filters()["bot_id"]`.
+
+**Plan futuro**: cuando haya autenticación de usuarios, el selector mostrará solo los bots a los que el usuario logueado tiene permiso. Por ahora muestra todos los bots disponibles en la DB.
 
 ---
 

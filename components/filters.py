@@ -95,6 +95,26 @@ def render_sidebar():
             unsafe_allow_html=True,
         )
 
+        # ── Bot selector ──────────────────────────────────────────────────────
+        from utils.db import get_available_bot_ids
+
+        available_bots = get_available_bot_ids()
+
+        if "selected_bot" not in st.session_state:
+            st.session_state["selected_bot"] = available_bots[0] if available_bots else "apapachar"
+
+        st.selectbox(
+            "Bot",
+            options=available_bots,
+            key="selected_bot",
+            help="Selecciona qué bot ver en el dashboard",
+        )
+
+        st.markdown(
+            '<hr style="margin:0.75rem 0">',
+            unsafe_allow_html=True,
+        )
+
         # ── Date filters ──────────────────────────────────────────────────────
         st.markdown(
             '<p style="font-family:\'Open Sans\',sans-serif;font-size:0.66rem;'
@@ -146,7 +166,9 @@ def get_filters() -> dict:
     date_from = st.session_state.get("filter_from", today - datetime.timedelta(days=30))
     date_to   = st.session_state.get("filter_to",   today)
     date_to_excl = date_to + datetime.timedelta(days=1)
+    bot_id = st.session_state.get("selected_bot", "apapachar")
     return {
         "date_from": str(date_from),
         "date_to":   str(date_to_excl),
+        "bot_id":    bot_id,
     }

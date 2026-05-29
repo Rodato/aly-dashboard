@@ -19,10 +19,11 @@ from components.kpi_row import ICONS as KPI_ICONS
 filters   = get_filters()
 date_from = filters["date_from"]
 date_to   = filters["date_to"]
+bot_id    = filters["bot_id"]
 
 page_header(t("lb_page_title"), t("lb_page_sub"))
 
-df = db.get_leaderboard(date_from, date_to, limit=20)
+df = db.get_leaderboard(date_from, date_to, limit=20, bot_id=bot_id)
 
 if df.empty:
     st.info(t("lb_no_data"))
@@ -35,7 +36,7 @@ def _is_actionable_flag(val):
     v = val.lower()
     return any(kw in v for kw in ("high", "medium", "red", "rojo", "critico", "orange", "naranja", "warning", "advertencia"))
 
-df_flags_raw = db.get_flags_data(date_from, date_to)
+df_flags_raw = db.get_flags_data(date_from, date_to, bot_id=bot_id)
 if not df_flags_raw.empty:
     df_flags_raw = df_flags_raw[df_flags_raw["flags"].apply(_is_actionable_flag)]
     flag_counts = df_flags_raw.groupby("user_number").size().reset_index(name="n_flags")
@@ -364,8 +365,8 @@ if selected_rows:
         icon_svg=KPI_ICONS["users"],
     )
 
-    df_convs = db.get_user_conversations(user_number, date_from, date_to)
-    df_msgs  = db.get_user_messages(user_number, date_from, date_to)
+    df_convs = db.get_user_conversations(user_number, date_from, date_to, bot_id=bot_id)
+    df_msgs  = db.get_user_messages(user_number, date_from, date_to, bot_id=bot_id)
 
     if df_msgs.empty and df_convs.empty:
         st.info(t("lb_no_conv_data"))

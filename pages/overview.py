@@ -67,19 +67,20 @@ def _classify_flag(val) -> str:
 filters = get_filters()
 date_from = filters["date_from"]
 date_to   = filters["date_to"]
+bot_id    = filters["bot_id"]
 
 page_header("Dashboard Aly", "Resumen operacional del bot de WhatsApp")
 
 
 # ── Data fetch ────────────────────────────────────────────────────────────────
 try:
-    kpis     = db.get_user_kpis(date_from, date_to)
-    n_msg    = db.get_messages_count(date_from, date_to)
-    conv_m   = db.get_conversation_metrics(date_from, date_to)
-    deltas   = db.get_kpi_deltas(date_from, date_to)
-    df_daily = db.get_daily_activity(date_from, date_to)
-    df_flags = db.get_flags_data(date_from, date_to)
-    df_heat  = db.get_activity_heatmap(date_from, date_to)
+    kpis     = db.get_user_kpis(date_from, date_to, bot_id=bot_id)
+    n_msg    = db.get_messages_count(date_from, date_to, bot_id=bot_id)
+    conv_m   = db.get_conversation_metrics(date_from, date_to, bot_id=bot_id)
+    deltas   = db.get_kpi_deltas(date_from, date_to, bot_id=bot_id)
+    df_daily = db.get_daily_activity(date_from, date_to, bot_id=bot_id)
+    df_flags = db.get_flags_data(date_from, date_to, bot_id=bot_id)
+    df_heat  = db.get_activity_heatmap(date_from, date_to, bot_id=bot_id)
 except Exception as e:
     st.error(f"Error de base de datos: {e}")
     st.stop()
