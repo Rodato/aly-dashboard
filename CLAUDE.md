@@ -16,7 +16,7 @@ python3 -m streamlit run app.py
 ## Proyecto
 Dashboard operativo privado para **Apapáchar** (chatbot WhatsApp RAG, crianza 0-5 años, Fundación Apapacho). Marca visible: **Aly**.
 
-**Multi-bot — alcance del dashboard:** la DB de Supabase es compartida. Hoy solo el bot **apapachar** escribe a `users_interactions/users_data/conversations_data` (el bot **demo** no usa RAG → no toca el código de Aly → no persiste a estas tablas). Próximamente entra un bot del programa de **México** que sí va a escribir a la misma DB. Para que ese futuro no contamine los KPIs, el plan acordado (pendiente de implementar el dev del bot) es agregar una columna `bot_id` a las 3 tablas, con backfill one-shot a `'apapachar'`, **sin** default y `NOT NULL` tras la migración. Cada deploy debe setear `BOT_ID` explícito o el bot falla al arrancar (fail-fast). Cuando esté en prod, el dashboard agregará `WHERE bot_id = 'apapachar'` a `_date_filter`. Ver memoria `pending-bot-id`.
+**Multi-bot — alcance del dashboard:** la DB de Supabase es compartida. Las 3 tablas (`users_interactions`, `users_data`, `conversations_data`) tienen columna `bot_id` (type `text`, `NOT NULL`, default `''`). El bot escribe `'apapachar'` o `'demo'` según `BOT_ID` env var. El dashboard filtra **solo `bot_id = 'apapachar'`** automáticamente en `_date_filter()` (`utils/db.py`) — todas las queries heredan este filtro por defecto. Para drill-downs por usuario explícito que deben ver todas las conversaciones sin importar bot_id, pasar `bot_col=None` a `_date_filter()`.
 
 ---
 

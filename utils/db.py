@@ -107,7 +107,7 @@ def get_users_by_country(date_from=None, date_to=None) -> pd.DataFrame:
     where_i, params_i = _date_filter(
         "ui.created_at", date_from, date_to,
         extra="ud.country IS NOT NULL",
-        client_col="ui.client_number", conv_col="ui.conversation_id",
+        client_col="ui.client_number", conv_col="ui.conversation_id", bot_col="ui.bot_id",
     )
     query = f"""
         SELECT ud.country, COUNT(DISTINCT ud.number) AS n_users
@@ -127,7 +127,7 @@ def get_users_by_gender(date_from=None, date_to=None) -> pd.DataFrame:
     where_i, params_i = _date_filter(
         "ui.created_at", date_from, date_to,
         extra="ud.gender IS NOT NULL",
-        client_col="ui.client_number", conv_col="ui.conversation_id",
+        client_col="ui.client_number", conv_col="ui.conversation_id", bot_col="ui.bot_id",
     )
     query = f"""
         SELECT ud.gender, COUNT(DISTINCT ud.number) AS n_users
@@ -147,7 +147,7 @@ def get_users_by_region(date_from=None, date_to=None) -> pd.DataFrame:
     where_i, params_i = _date_filter(
         "ui.created_at", date_from, date_to,
         extra="ud.region IS NOT NULL",
-        client_col="ui.client_number", conv_col="ui.conversation_id",
+        client_col="ui.client_number", conv_col="ui.conversation_id", bot_col="ui.bot_id",
     )
     query = f"""
         SELECT ud.region, COUNT(DISTINCT ud.number) AS n_users
@@ -312,7 +312,7 @@ def get_conversations_data(date_from=None, date_to=None) -> pd.DataFrame:
     """Return all processed conversations with summary, keywords, flags."""
     where, params = _date_filter(
         "conversation_date", date_from, date_to,
-        client_col="user_number",
+        client_col="user_number", bot_col="bot_id",
     )
     query = f"""
         SELECT
@@ -338,7 +338,7 @@ def get_summaries(date_from=None, date_to=None, limit: int = 20) -> pd.DataFrame
     where, params = _date_filter(
         "conversation_date", date_from, date_to,
         extra="summary IS NOT NULL AND summary != ''",
-        client_col="user_number",
+        client_col="user_number", bot_col="bot_id",
     )
     query = f"""
         SELECT conversation_id, user_number, conversation_date, summary
@@ -358,7 +358,7 @@ def get_flags_data(date_from=None, date_to=None) -> pd.DataFrame:
     where, params = _date_filter(
         "conversation_date", date_from, date_to,
         extra="flags IS NOT NULL AND flags != ''",
-        client_col="user_number",
+        client_col="user_number", bot_col="bot_id",
     )
     query = f"""
         SELECT conversation_id, user_number, conversation_date, flags, summary,
@@ -401,7 +401,7 @@ def get_leaderboard(date_from=None, date_to=None, limit: int = 20) -> pd.DataFra
     """Return top users ranked by total messages sent, with engagement metrics."""
     where, params = _date_filter(
         "ui.created_at", date_from, date_to,
-        client_col="ui.client_number", conv_col="ui.conversation_id",
+        client_col="ui.client_number", conv_col="ui.conversation_id", bot_col="ui.bot_id",
     )
     query = f"""
         SELECT
@@ -434,7 +434,7 @@ def get_flag_counts_by_user(date_from=None, date_to=None) -> pd.DataFrame:
     where, params = _date_filter(
         "conversation_date", date_from, date_to,
         extra="flags IS NOT NULL AND flags != ''",
-        client_col="user_number",
+        client_col="user_number", bot_col="bot_id",
     )
     query = f"""
         SELECT user_number,
@@ -563,8 +563,9 @@ def _date_filter(
     extra: str = "",
     client_col="client_number",
     conv_col="conversation_id",
+    bot_col="bot_id",
 ):
-    """Build a WHERE clause for date range + test exclusion + optional extra.
+    """Build a WHERE clause for date range + test exclusion + bot_id filter + optional extra.
 
     El rango de fechas se interpreta en la zona local (America/Bogota / GMT-5),
     para que un filtro "del 1 al 7 de mayo" incluya todos los mensajes vistos
@@ -574,6 +575,9 @@ def _date_filter(
     _TEST_CLIENT_NUMBERS / _TEST_CLIENT_LIKE / _TEST_CONV_LIKE arriba). Pasar
     `client_col=None` y/o `conv_col=None` para tablas donde esa columna no
     existe o se quiere apagar el filtro (drill-downs por usuario explícito).
+
+    El filtro bot_id = 'apapachar' también se aplica por defecto para excluir
+    datos del bot demo. Pasar `bot_col=None` para desactivarlo.
     """
     clauses = []
     params: list = []
@@ -596,6 +600,9 @@ def _date_filter(
         for pat in _TEST_CONV_LIKE:
             clauses.append(f"{conv_col} NOT LIKE %s")
             params.append(pat)
+    if bot_col:
+        clauses.append(f"{bot_col} = %s")
+        params.append("apapachar")
     if clauses:
         return "WHERE " + " AND ".join(clauses), params
     return "", params
