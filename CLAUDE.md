@@ -38,15 +38,15 @@ El dashboard **detecta automáticamente** los `bot_id` disponibles en la DB (`ut
 ```
 Aly_dashboard/
 ├── .env                        # DATABASE_URL
-├── app.py                      # Entry point — st.navigation (position="hidden"), CSS, render_sidebar()
+├── app.py                      # Entry point — st.navigation (position="hidden"), CSS, render_sidebar() + render_topbar()
 ├── pages/
-│   ├── overview.py             # Inicio: hero banner, 4 KPIs con sparkline, growth chart + stat_list (peak hour/day, grid 2:1), heatmap bloques
+│   ├── overview.py             # Inicio: hero banner, 4 KPIs con sparkline + caption explicativo, growth chart + stat_list (peak hour/day, grid 2:1), heatmap bloques. La gráfica de actividad rellena días sin datos con 0, fija el eje X al rango y desactiva el zoom de Plotly (ver Convenciones)
 │   ├── usuarios.py             # Demografía: 3 KPIs (users, regiones, msg/usuario), layout 2:1 — choropleth Colombia (33 deptos) a la izquierda, cobertura + ranking top 10 a la derecha
 │   ├── conversaciones.py       # Keywords + resúmenes (no está en nav, en standby)
 │   ├── alertas.py              # Flags 🔴/🟠 (HIGH-/MEDIUM-), export Excel con transcripción, "marcar revisado" persistido en Supabase (reviewed_at)
 │   └── leaderboard.py          # Top usuarios: podio, bar top 10, tabla top 20 con Flags 🚩, drill-down con tabs (header muestra teléfono completo del usuario)
 ├── components/
-│   ├── filters.py              # Sidebar: logo Aly, nav custom (Material icons), lang toggle, date pickers + presets 7d/30d (on_click callbacks). Sin export — descarga vive en Alertas
+│   ├── filters.py              # render_sidebar() (logo Aly, nav custom Material icons, bot selector, date pickers + presets 7d/30d con on_click callbacks) + render_topbar() (selector de idioma ES/EN arriba a la derecha). get_filters() lee session_state. Sin export — descarga vive en Alertas
 │   ├── kpi_row.py              # KPI cards HTML custom: accent bar + icon + sparkline SVG + delta pill. ICONS dict reutilizable
 │   └── charts.py               # Fábrica Plotly: bar_h, donut, bar_v, choropleth (silueta flat + dots), choropleth_colombia (departamentos con aliases)
 ├── data/
@@ -63,6 +63,8 @@ Aly_dashboard/
 
 ## Navegación
 `st.navigation(pages, position="hidden")` oculta la nav nativa; la real se renderiza en `_render_nav()` (components/filters.py) con `st.page_link` + Material Symbols (`:material/dashboard:`, `:material/group:`, `:material/warning:`, `:material/emoji_events:`) agrupados en secciones **ANÁLISIS** (Inicio, Usuarios) y **OPERACIÓN** (Alertas, Leaderboard). La página `conversaciones.py` existe pero no está en `NAV_ITEMS` ni en `app.py:pages`.
+
+**Selector de idioma**: vive en `render_topbar()` (no en el sidebar) — un `st.segmented_control(["ES","EN"], key="lang_seg")` alineado a la derecha del área principal, renderizado en `app.py` antes de `pg.run()` para que aparezca en todas las páginas. Su `on_change` escribe `st.session_state.lang`. CSS: `.topbar-lang` + override compacto de `[data-testid="stSegmentedControl"]` en `utils/styles.py`.
 
 ---
 
@@ -119,13 +121,15 @@ Todas las queries de tiempo convierten a **GMT-5 (`America/Bogota`)** vía `AT T
 - `accent`: color key de COLORS (`accent` | `navy` | `positive` | `yellow` | `red`) — pinta la barra izquierda y los dots del sparkline
 - `icon`: key de `kpi_row.ICONS` (`users`, `message`, `send`, `chart`, `alert-triangle`, `alert-circle`, `flag`, `activity`)
 - `spark`: lista de valores para sparkline SVG inline (opcional)
+- `caption`: oración corta explicativa bajo el valor (opcional) — clase `.kpi-card__caption`. En Inicio cada KPI la usa para autoexplicarse (ej. "Personas que interactuaron con Aly").
 
 ---
 
 ## Convenciones obligatorias
 - **SQL**: siempre parametrizado con `%s`. Nunca f-strings con datos externos. `_date_filter()` construye el WHERE.
 - **Zona horaria**: la DB guarda timestamptz en UTC, pero la UI opera en **GMT-5 (`America/Bogota`)**. Toda query nueva que extraiga hora/día o filtre por fecha debe convertir con `AT TIME ZONE '{TZ}'` (constante en `utils/db.py`). El "today" del sidebar también se calcula con `ZoneInfo("America/Bogota")`.
-- **Filtros globales**: en `st.session_state` (`filter_from`, `filter_to`). Inicializados en `components/filters.py`. Páginas los leen con `get_filters()`.
+- **Filtros globales**: en `st.session_state` (`filter_from`, `filter_to`). Inicializados en `components/filters.py`. Páginas los leen con `get_filters()` (que devuelve `date_to` **exclusivo** = fecha elegida + 1 día).
+- **Gráficas de series temporales**: las queries (`get_daily_activity`, etc.) solo devuelven días **con** datos. Para que el filtro de fechas se vea respetado, rellenar los días faltantes con 0 (reindex sobre `pd.date_range(date_from, date_to)`), fijar el eje X con `fig.update_xaxes(range=[...], fixedrange=True)` y desactivar el modebar (`config={"displayModeBar": False}`). Si hay menos días con datos que el span, mostrar `t("sparse_data_note")`. Patrón vivo en `overview.py` (actividad diaria). Evita que un rango con datos escasos parezca un filtro roto.
 - **Widgets Streamlit**: si un widget usa `key=`, NO pasar también `value=` — Streamlit lanza warning. Usar session_state para valor inicial. Para presets que mutan widget keys (ej. `7d`/`30d`), usar `on_click` callbacks — asignar a `st.session_state[key]` después de renderizar el widget se ignora silenciosamente.
 - **Texto**: todo via `t("key")` de `utils/i18n.py`. Agregar claves nuevas en ambos idiomas.
 - **CSS**: inyectado con `st.html(css)` en `utils/styles.inject()`. HTML de componentes sí usa `st.markdown(unsafe_allow_html=True)` (ver `hero_banner`, `card_header`, `arc_row`, `kpi_row`).
@@ -194,4 +198,6 @@ Aly_Apapachar (bot) → Conversation Closer → Supabase → este dashboard
 ## Deployment
 - **Local**: `python3 -m streamlit run app.py`
 - **Producción**: Streamlit Cloud (share.streamlit.io) — secret necesario: `DATABASE_URL`
+- **URL**: https://aly-dashboard-pejmrmpdvh8wqefx2ibnzj.streamlit.app/
 - Auto-redeploy al hacer push a `main`
+- **Gotcha**: al agregar un símbolo nuevo a un módulo ya importado (ej. una función nueva en `components/filters.py`), el hot-reload puede fallar con `ImportError` por caché de `sys.modules`. Solución: **Reboot app** desde Manage app en Streamlit Cloud (no requiere cambio de código).
