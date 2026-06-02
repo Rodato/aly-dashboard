@@ -81,20 +81,6 @@ def render_sidebar():
         _render_logo()
         _render_nav()
 
-        # ── Language toggle ───────────────────────────────────────────────────
-        if "lang_toggle" not in st.session_state:
-            st.session_state.lang_toggle = st.session_state.get("lang", "es") == "en"
-
-        def _on_lang_change():
-            st.session_state.lang = "en" if st.session_state.lang_toggle else "es"
-
-        st.toggle("EN / ES", key="lang_toggle", on_change=_on_lang_change)
-
-        st.markdown(
-            '<hr style="margin:0.75rem 0">',
-            unsafe_allow_html=True,
-        )
-
         # ── Bot selector ──────────────────────────────────────────────────────
         from utils.db import get_available_bot_ids
 
@@ -158,6 +144,32 @@ def render_sidebar():
             f'</div>',
             unsafe_allow_html=True,
         )
+
+
+def render_topbar():
+    """Render the global top bar — language selector pinned to the top-right.
+
+    Rendered in app.py above the page content, so it shows on every page.
+    """
+    lang = st.session_state.get("lang", "es")
+    if "lang_seg" not in st.session_state:
+        st.session_state["lang_seg"] = "EN" if lang == "en" else "ES"
+
+    def _on_lang_change():
+        st.session_state.lang = "en" if st.session_state.get("lang_seg") == "EN" else "es"
+
+    # Push the control to the right; wrap it so CSS can target the topbar only.
+    _, col_lang = st.columns([6, 1])
+    with col_lang:
+        st.markdown('<div class="topbar-lang">', unsafe_allow_html=True)
+        st.segmented_control(
+            "language",
+            options=["ES", "EN"],
+            key="lang_seg",
+            on_change=_on_lang_change,
+            label_visibility="collapsed",
+        )
+        st.markdown('</div>', unsafe_allow_html=True)
 
 
 def get_filters() -> dict:

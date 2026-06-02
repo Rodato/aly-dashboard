@@ -138,6 +138,7 @@ def render(metrics: list[dict]):
         accent      str                — color key in COLORS; default "accent"
         icon        str                — key from ICONS
         spark       list[num] | None   — daily series for the sparkline
+        caption     str                — optional one-line explanation under the value
     """
     cols = st.columns(len(metrics))
     for col, m in zip(cols, metrics):
@@ -148,6 +149,11 @@ def render(metrics: list[dict]):
             value_html = _fmt_value(m["value"], m.get("prefix", ""), m.get("suffix", ""))
             spark_html = _sparkline_svg(m.get("spark") or [], accent)
             delta_html = _delta_pill(m.get("delta"), m.get("delta_label", ""))
+            caption = m.get("caption", "")
+            caption_html = (
+                f'<div class="kpi-card__caption">{html.escape(caption)}</div>'
+                if caption else ""
+            )
 
             st.markdown(
                 f'<div class="kpi-card" style="--kpi-accent:{accent}">'
@@ -156,6 +162,7 @@ def render(metrics: list[dict]):
                 f'<span class="kpi-card__icon">{icon_svg}</span>'
                 f'</div>'
                 f'<div class="kpi-card__value">{html.escape(value_html)}</div>'
+                f'{caption_html}'
                 f'{delta_html}'
                 f'{spark_html}'
                 f'</div>',

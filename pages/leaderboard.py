@@ -269,10 +269,10 @@ def _render_wordcloud(df_convs):
 
     wc = WordCloud(
         width=800,
-        height=380,
+        height=260,
         background_color=COLORS["bg_card"],
         color_func=_color_func,
-        max_words=60,
+        max_words=40,
         prefer_horizontal=0.85,
     ).generate_from_frequencies(translated_freq)
 
@@ -371,17 +371,18 @@ if selected_rows:
     if df_msgs.empty and df_convs.empty:
         st.info(t("lb_no_conv_data"))
     else:
-        tab_wc, tab_sum, tab_trans = st.tabs([
-            t("lb_tab_wordcloud"),
+        # Summaries & transcripts first (most valuable); word cloud last.
+        tab_sum, tab_trans, tab_wc = st.tabs([
             t("lb_tab_summaries"),
             t("lb_tab_transcripts"),
+            t("lb_tab_wordcloud"),
         ])
-
-        with tab_wc:
-            _render_wordcloud(df_convs)
 
         with tab_sum:
             _render_summaries(df_convs)
 
         with tab_trans:
             _render_transcripts_from_msgs(df_msgs)
+
+        with tab_wc:
+            _render_wordcloud(df_convs)

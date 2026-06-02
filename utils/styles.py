@@ -334,6 +334,24 @@ def inject():
         height: 36px;
         margin-top: 0.6rem;
     }
+    .kpi-card__caption {
+        font-family: 'Open Sans', sans-serif;
+        font-size: 0.72rem;
+        line-height: 1.25;
+        color: var(--text-muted);
+        margin-top: 0.4rem;
+    }
+
+    /* ── Top bar — language selector pinned top-right ───────────────────── */
+    .topbar-lang { display: flex; justify-content: flex-end; }
+    /* Compact segmented control in the top bar */
+    [data-testid="stSegmentedControl"] button {
+        padding: 0.1rem 0.7rem !important;
+        font-family: 'Open Sans', sans-serif !important;
+        font-weight: 700 !important;
+        font-size: 0.72rem !important;
+        letter-spacing: 0.04em !important;
+    }
 
     /* ── Page header — title, subtitle and period chip ──────────────────── */
     .page-header {

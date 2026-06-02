@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 from utils.styles import inject as inject_styles
 from utils.i18n import t
-from components.filters import render_sidebar
+from components.filters import render_sidebar, render_topbar
 
 load_dotenv()
 
@@ -36,5 +36,8 @@ pg = st.navigation(pages, position="hidden")
 
 # Sidebar — logo + filters (rendered on every page)
 render_sidebar()
+
+# Top bar — language selector pinned top-right (rendered on every page)
+render_topbar()
 
 pg.run()

@@ -69,7 +69,7 @@ date_from = filters["date_from"]
 date_to   = filters["date_to"]
 bot_id    = filters["bot_id"]
 
-page_header("Dashboard Aly", "Resumen operacional del bot de WhatsApp")
+page_header(t("ov_page_title"), t("ov_page_sub"))
 
 
 # ── Data fetch ────────────────────────────────────────────────────────────────
@@ -129,6 +129,23 @@ hero_banner(
 )
 
 
+# ── Fill daily-activity gaps across the full selected range ──────────────────
+# Days with no activity render as 0 so the chart visibly spans date_from→date_to
+# (date_to comes exclusive from get_filters). Makes the date filter clearly respected.
+n_days_with_data = len(df_daily)
+full_range = pd.date_range(start=date_from, end=date_to, freq="D", inclusive="left")
+if df_daily.empty:
+    df_daily = pd.DataFrame({"day": full_range, "messages": 0, "users": 0, "sessions": 0})
+else:
+    df_daily["day"] = pd.to_datetime(df_daily["day"])
+    df_daily = (
+        df_daily.set_index("day")
+        .reindex(full_range, fill_value=0)
+        .rename_axis("day")
+        .reset_index()
+    )
+
+
 # ── KPI row ───────────────────────────────────────────────────────────────────
 if df_daily.empty:
     spark_users = spark_sessions = spark_messages = spark_avg = []
@@ -152,6 +169,7 @@ kpi_row([
         "accent":      "accent",
         "icon":        "users",
         "spark":       spark_users,
+        "caption":     t("kpi_users_cap"),
     },
     {
         "label":       t("n_sessions"),
@@ -161,6 +179,7 @@ kpi_row([
         "accent":      "navy",
         "icon":        "message",
         "spark":       spark_sessions,
+        "caption":     t("kpi_sessions_cap"),
     },
     {
         "label":       t("n_messages"),
@@ -170,6 +189,7 @@ kpi_row([
         "accent":      "positive",
         "icon":        "send",
         "spark":       spark_messages,
+        "caption":     t("kpi_messages_cap"),
     },
     {
         "label":       t("avg_msg_per_conv"),
@@ -179,6 +199,7 @@ kpi_row([
         "accent":      "yellow",
         "icon":        "chart",
         "spark":       spark_avg,
+        "caption":     t("kpi_avg_cap"),
     },
 ])
 
@@ -195,7 +216,7 @@ with col_chart:
         right_text=t("card_last_n_days").format(n=span_days),
     )
 
-    if df_daily.empty:
+    if n_days_with_data == 0:
         st.info(t("no_data"))
     else:
         df_daily["day"] = pd.to_datetime(df_daily["day"])
@@ -209,7 +230,7 @@ with col_chart:
             line=dict(color=COLORS["accent"], width=2.5, shape="spline"),
             fill="tozeroy",
             fillcolor="rgba(2,115,229,0.08)",
-            hovertemplate="%{x|%d %b}<br><b>%{y}</b> mensajes<extra></extra>",
+            hovertemplate="%{x|%d %b}<br><b>%{y}</b> " + t("hover_messages") + "<extra></extra>",
         ))
         fig.add_trace(go.Scatter(
             x=df_daily["day"],
@@ -217,7 +238,7 @@ with col_chart:
             mode="lines",
             name=t("n_users"),
             line=dict(color=COLORS["yellow"], width=2, dash="dot"),
-            hovertemplate="%{x|%d %b}<br><b>%{y}</b> usuarios<extra></extra>",
+            hovertemplate="%{x|%d %b}<br><b>%{y}</b> " + t("hover_users") + "<extra></extra>",
             yaxis="y2",
         ))
         fig.update_layout(
@@ -233,7 +254,15 @@ with col_chart:
                 hovermode="x unified",
             )
         )
-        st.plotly_chart(fig, use_container_width=True)
+        # Lock the x-axis to the full selected range and disable zoom/pan so the
+        # filter is visibly respected (empty days show as 0, not auto-cropped).
+        fig.update_xaxes(range=[date_from, date_to], fixedrange=True)
+        fig.update_yaxes(fixedrange=True)
+        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+
+        # Surface sparse data so an empty stretch doesn't read as a broken filter.
+        if n_days_with_data < span_days:
+            st.caption(t("sparse_data_note").format(n=n_days_with_data))
 
 with col_stats:
     # Derive peak hour / peak day from heatmap data
@@ -296,7 +325,7 @@ else:
             [1.0,  COLORS["accent"]],
         ],
         showscale=False,
-        hovertemplate="<b>%{y}</b> · %{x}h<br>%{z} mensajes<extra></extra>",
+        hovertemplate="<b>%{y}</b> · %{x}h<br>%{z} " + t("hover_messages") + "<extra></extra>",
     ))
     fig_h.update_layout(
         paper_bgcolor=COLORS["bg_card"],

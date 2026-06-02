@@ -44,6 +44,8 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "time_of_day": {"es": "Mensajes por hora del día", "en": "Messages by time of day"},
     "hour_axis": {"es": "Hora", "en": "Hour"},
     "messages_axis": {"es": "Mensajes", "en": "Messages"},
+    "hover_messages": {"es": "mensajes", "en": "messages"},
+    "hover_users": {"es": "usuarios", "en": "users"},
     "by_country": {"es": "Usuarios por país", "en": "Users by country"},
     "by_gender": {"es": "Usuarios por género", "en": "Users by gender"},
     "by_region": {"es": "Usuarios por región", "en": "Users by region"},
@@ -84,11 +86,25 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     },
 
     # ---- Overview page ----
+    "ov_page_title":       {"es": "Dashboard Aly", "en": "Aly Dashboard"},
+    "ov_page_sub":         {"es": "Resumen operacional del bot de WhatsApp",
+                            "en": "Operational summary of the WhatsApp bot"},
     "activity_over_time":  {"es": "Actividad diaria", "en": "Daily activity"},
     "activity_heatmap":    {"es": "Mapa de actividad", "en": "Activity heatmap"},
     "activity_heatmap_sub":{"es": "Hora × día de la semana", "en": "Hour × day of the week"},
-    "avg_msg_per_conv":    {"es": "Msg / conversación", "en": "Msg / conversation"},
+    "avg_msg_per_conv":    {"es": "Mensajes / conversación", "en": "Messages / conversation"},
     "vs_prev_period":      {"es": "vs período anterior", "en": "vs previous period"},
+    "sparse_data_note":    {"es": "Solo {n} día(s) con actividad en el rango seleccionado.",
+                            "en": "Only {n} day(s) with activity in the selected range."},
+    # KPI captions (one-line explanation under each metric)
+    "kpi_users_cap":       {"es": "Personas que interactuaron con Aly",
+                            "en": "People who interacted with Aly"},
+    "kpi_sessions_cap":    {"es": "Conversaciones iniciadas con Aly",
+                            "en": "Conversations started with Aly"},
+    "kpi_messages_cap":    {"es": "Total de mensajes intercambiados",
+                            "en": "Total messages exchanged"},
+    "kpi_avg_cap":         {"es": "Promedio de mensajes por conversación",
+                            "en": "Average messages per conversation"},
     "peak_hour":           {"es": "Hora pico", "en": "Peak hour"},
     "peak_day":            {"es": "Día más activo", "en": "Most active day"},
     "total_convs":         {"es": "Conversaciones", "en": "Conversations"},
@@ -120,6 +136,10 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "kpi_regions":         {"es": "Regiones",          "en": "Regions"},
     "kpi_top_country":     {"es": "País principal",    "en": "Top country"},
     "kpi_top_region":      {"es": "Región principal",  "en": "Top region"},
+    "users_card_sub":      {"es": "{users} usuarios · {regions} regiones",
+                            "en": "{users} users · {regions} regions"},
+    "unmapped_regions":    {"es": "⚠️ Regiones sin mapear: {regions}",
+                            "en": "⚠️ Unmapped regions: {regions}"},
 
     # ---- Conversaciones page ----
     "convs_page_title":    {"es": "Conversaciones", "en": "Conversations"},
@@ -182,7 +202,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "lb_messages_short":   {"es": "msgs", "en": "msgs"},
     "lb_role_user":        {"es": "Usuario", "en": "User"},
     "lb_role_assistant":   {"es": "Asistente", "en": "Assistant"},
-    "lb_click_hint":       {"es": "Haz clic en una fila para ver el detalle del usuario.", "en": "Click a row to view user details."},
+    "lb_click_hint":       {"es": "Haz clic en la casilla a la izquierda de un usuario para ver su detalle.", "en": "Click the checkbox to the left of a user to see their details."},
     "lb_flags":            {"es": "Flags 🚩", "en": "Flags 🚩"},
 
     # ---- Misc ----

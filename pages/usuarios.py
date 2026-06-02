@@ -71,7 +71,7 @@ col_map, col_side = st.columns([2, 1])
 with col_map:
     card_header(
         title=t("region_heatmap"),
-        subtitle=f"{kpis['n_users']} usuarios · {n_regions} regiones",
+        subtitle=t("users_card_sub").format(users=kpis["n_users"], regions=n_regions),
         icon_svg=KPI_ICONS["activity"],
     )
     if df_region.empty:
@@ -80,7 +80,7 @@ with col_map:
         fig_col = choropleth_colombia(df_region, "region", "n_users", height=440)
         st.plotly_chart(fig_col, use_container_width=True)
         if unmatched:
-            st.caption(f"⚠️ Regiones sin mapear: {', '.join(unmatched)}")
+            st.caption(t("unmapped_regions").format(regions=", ".join(unmatched)))
 
 with col_side:
     card_header(title=t("coverage"), icon_svg=KPI_ICONS["chart"])
