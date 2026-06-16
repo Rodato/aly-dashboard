@@ -345,8 +345,59 @@ def get_schema_info() -> pd.DataFrame:
 # conversations_data — summaries, keywords, flags
 # ---------------------------------------------------------------------------
 
-def get_conversations_data(date_from=None, date_to=None, bot_id=None) -> pd.DataFrame:
-    """Return all processed conversations with summary, keywords, flags."""
+# Contenido bilingüe (ES/EN). El bot (repo Aly_Apapachar) escribe
+# summary_i18n / keywords_i18n (jsonb {"es": ..., "en": ...}) además del
+# summary/keywords original. El dashboard lee la versión del idioma activo con
+# fallback al original. Mientras la migración del bot no haya corrido, las
+# columnas no existen y se cae automáticamente al texto original.
+_HAS_I18N = None  # cache por proceso: None=sin chequear, True/False una vez resuelto
+
+
+def _conversations_has_i18n() -> bool:
+    """True si conversations_data tiene las columnas bilingües (migración aplicada).
+
+    Se resuelve una sola vez por proceso. Si el bot corre la migración con la app
+    ya levantada, hace falta un Reboot de la app para re-detectar (ver CLAUDE.md,
+    gotcha de Deployment).
+    """
+    global _HAS_I18N
+    if _HAS_I18N is None:
+        try:
+            df = fetch_df(
+                """
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
+                  AND table_name = 'conversations_data'
+                  AND column_name = 'summary_i18n'
+                LIMIT 1
+                """
+            )
+            _HAS_I18N = not df.empty
+        except Exception:
+            _HAS_I18N = False
+    return _HAS_I18N
+
+
+def _i18n_expr(column: str, lang: str, prefix: str = "") -> str:
+    """Expresión SQL para leer `column` en `lang` con fallback al original.
+
+    `lang` se restringe a 'es'/'en' (whitelist) — seguro para interpolar.
+    `prefix` es el alias de tabla calificado cuando aplica, p. ej. 'cd.'.
+    """
+    lang = "en" if str(lang).lower() == "en" else "es"
+    col = f"{prefix}{column}"
+    if _conversations_has_i18n():
+        return f"COALESCE(NULLIF({prefix}{column}_i18n->>'{lang}', ''), {col})"
+    return col
+
+
+def get_conversations_data(date_from=None, date_to=None, bot_id=None, lang="es") -> pd.DataFrame:
+    """Return all processed conversations with summary, keywords, flags.
+
+    `lang` ('es'/'en') selecciona la versión bilingüe del summary/keywords si
+    existe (fallback al original).
+    """
     where, params = _date_filter(
         "conversation_date", date_from, date_to,
         client_col="user_number", bot_col="bot_id", bot_id=bot_id,
@@ -356,8 +407,8 @@ def get_conversations_data(date_from=None, date_to=None, bot_id=None) -> pd.Data
             conversation_id,
             user_number,
             conversation_date,
-            summary,
-            keywords,
+            {_i18n_expr("summary", lang)}  AS summary,
+            {_i18n_expr("keywords", lang)} AS keywords,
             flags,
             session
         FROM public.conversations_data
@@ -370,15 +421,16 @@ def get_conversations_data(date_from=None, date_to=None, bot_id=None) -> pd.Data
         return pd.DataFrame()
 
 
-def get_summaries(date_from=None, date_to=None, limit: int = 20, bot_id=None) -> pd.DataFrame:
-    """Return recent conversation summaries."""
+def get_summaries(date_from=None, date_to=None, limit: int = 20, bot_id=None, lang="es") -> pd.DataFrame:
+    """Return recent conversation summaries (en `lang` si hay versión bilingüe)."""
     where, params = _date_filter(
         "conversation_date", date_from, date_to,
         extra="summary IS NOT NULL AND summary != ''",
         client_col="user_number", bot_col="bot_id", bot_id=bot_id,
     )
     query = f"""
-        SELECT conversation_id, user_number, conversation_date, summary
+        SELECT conversation_id, user_number, conversation_date,
+               {_i18n_expr("summary", lang)} AS summary
         FROM public.conversations_data
         {where}
         ORDER BY conversation_date DESC
@@ -523,11 +575,12 @@ def get_rag_summary() -> pd.DataFrame:
 # Per-user drill-down queries
 # ---------------------------------------------------------------------------
 
-def get_user_conversations(user_number, date_from=None, date_to=None, bot_id=None) -> pd.DataFrame:
+def get_user_conversations(user_number, date_from=None, date_to=None, bot_id=None, lang="es") -> pd.DataFrame:
     """Return all conversations_data rows for a specific user.
 
     Joins through conversation_id from users_interactions to avoid any
     format mismatch between client_number and conversations_data.user_number.
+    `lang` ('es'/'en') selecciona la versión bilingüe del summary/keywords.
     """
     date_where, date_params = _date_filter(
         "ui.created_at", date_from, date_to,
@@ -541,7 +594,9 @@ def get_user_conversations(user_number, date_from=None, date_to=None, bot_id=Non
     query = f"""
         SELECT DISTINCT ON (cd.conversation_id)
                cd.conversation_id, cd.user_number, cd.conversation_date,
-               cd.summary, cd.keywords, cd.flags, cd.session
+               {_i18n_expr("summary", lang, prefix="cd.")} AS summary,
+               {_i18n_expr("keywords", lang, prefix="cd.")} AS keywords,
+               cd.flags, cd.session
         FROM public.conversations_data cd
         JOIN public.users_interactions ui USING (conversation_id)
         {full_where}

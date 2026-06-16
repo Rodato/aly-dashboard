@@ -19,13 +19,14 @@ from components.filters import get_filters
 filters   = get_filters()
 date_from = filters["date_from"]
 date_to   = filters["date_to"]
+lang      = st.session_state.get("lang", "es")
 
 page_header(t("convs_page_title"), t("convs_page_sub"))
 
 # ── Load data ─────────────────────────────────────────────────────────────────
 try:
-    df_convs    = db.get_conversations_data(date_from, date_to)
-    df_summaries = db.get_summaries(date_from, date_to, limit=20)
+    df_convs    = db.get_conversations_data(date_from, date_to, lang=lang)
+    df_summaries = db.get_summaries(date_from, date_to, limit=20, lang=lang)
 except Exception as e:
     st.error(f"Error de base de datos: {e}")
     st.stop()
