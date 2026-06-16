@@ -9,7 +9,7 @@ No actualizar por: bugfixes menores, ajustes de UI, cambios de copy.
 ```bash
 python3 -m streamlit run app.py
 ```
-`streamlit` no está en el PATH — siempre usar `python3 -m streamlit`.
+`streamlit` no está en el PATH — siempre usar `python3 -m streamlit`. Corre sobre el **Python 3.9 del sistema** (streamlit/psycopg2 instalados globales, sin venv). El login requiere `.streamlit/secrets.toml` (gitignored — copiar de `.streamlit/secrets.toml.example`); sin él, la app muestra "Falta la configuración de autenticación".
 
 ---
 
@@ -46,6 +46,7 @@ python3 -c "import bcrypt; print(bcrypt.hashpw(b'PASSWORD', bcrypt.gensalt()).de
 - **Streamlit ≥ 1.50** — UI con `st.navigation(position="hidden")` + nav custom en sidebar
 - **Supabase** (PostgreSQL) — conexión via `psycopg2` con `RealDictCursor`
 - **Plotly** — gráficas via fábrica centralizada en `components/charts.py`
+- **streamlit-authenticator ≥ 0.4** + **bcrypt** — login usuario/contraseña con roles (ver *Autenticación y roles*)
 - **python-dotenv** — `.env` cargado en `app.py`
 
 ---
@@ -114,8 +115,8 @@ Todas las queries de tiempo convierten a **GMT-5 (`America/Bogota`)** vía `AT T
 - `get_activity_heatmap(from, to)` → df dow/hour/messages (en GMT-5)
 - `get_conversation_metrics(from, to)` → dict métricas agregadas (incluye `avg_msg_per_user`)
 - `get_kpi_deltas(from, to)` → dict deltas fraccionales vs período anterior
-- `get_conversations_data(from, to)` → df completo de conversations_data
-- `get_summaries(from, to, limit)` → df resúmenes recientes
+- `get_conversations_data(from, to, lang="es")` → df completo de conversations_data
+- `get_summaries(from, to, limit, lang="es")` → df resúmenes recientes
 - `get_flags_data(from, to)` → df conversaciones con flags + `reviewed_at` (en GMT-5)
 - `mark_flag_reviewed(conv_id)` → UPDATE … SET reviewed_at = NOW()
 - `unmark_flag_reviewed(conv_id)` → UPDATE … SET reviewed_at = NULL
@@ -123,8 +124,13 @@ Todas las queries de tiempo convierten a **GMT-5 (`America/Bogota`)** vía `AT T
 - `get_leaderboard(from, to, limit)` → df top usuarios (last_seen / days_active en GMT-5)
 - `get_interactions_export(from, to)` → df para Excel export de interacciones (queda disponible aunque ya no se exponga en sidebar)
 - `get_messages_by_conversation_ids(conv_ids)` → df mensajes para lista de conversation_ids
-- `get_user_conversations(user_number, from, to)` → df conversaciones de un usuario (drill-down)
+- `get_user_conversations(user_number, from, to, lang="es")` → df conversaciones de un usuario (drill-down)
 - `get_user_messages(user_number, from, to)` → df mensajes de un usuario (drill-down)
+
+### Contenido bilingüe (ES/EN) de summary/keywords
+El bot (`Aly_Apapachar`) escribe en `conversations_data` dos columnas JSONB extra — `summary_i18n` y `keywords_i18n` (`{"es": ..., "en": ...}`, keywords como CSV por idioma) — además del `summary`/`keywords` original. Las queries que devuelven esos campos (`get_conversations_data`, `get_summaries`, `get_user_conversations`) aceptan `lang` ('es'/'en', default 'es') y leen la versión del idioma con **fallback al original** vía el helper `_i18n_expr()`. El `lang` viene de `st.session_state.get("lang", "es")` y lo pasan `conversaciones.py` y `leaderboard.py`.
+
+**Robustez:** `_conversations_has_i18n()` detecta (una vez por proceso, cacheado) si las columnas existen vía `information_schema`. Si la migración del bot **aún no corrió**, `_i18n_expr()` devuelve la columna original y nada se rompe; cuando la migración llegue con la app levantada, hace falta **Reboot app** para re-detectar. La traducción vive **del lado del bot**, no del dashboard — `utils/translate.py` (OpenRouter) quedó **sin uso** (el wordcloud de Leaderboard ahora toma los keywords ya traducidos de la DB).
 
 ---
 
@@ -159,6 +165,7 @@ Todas las queries de tiempo convierten a **GMT-5 (`America/Bogota`)** vía `AT T
 - **Íconos del sidebar**: override CSS para que las ligatures de Material Symbols no hereden `Open Sans` del selector global `*` del sidebar (ver `utils/styles.py`).
 - **Estado compartido entre usuarios**: persistir en Supabase, no en `st.session_state` (que es por sesión de browser). Ej.: `reviewed_at` de las flags vive en `conversations_data`, no en memoria.
 - **Filtrado de cuentas test**: toda query nueva sobre `users_interactions/conversations_data` debe pasar por `_date_filter()` para heredar el filtro de aly-evals automáticamente. No bypassear con `fetch_df` directo sin pensar en qué datos estás trayendo.
+- **Python 3.9 (entorno de runtime)**: la app corre sobre el Python 3.9 del sistema. **No usar la sintaxis `X | None`** (PEP 604) en anotaciones de módulos compartidos — falla al importar con `TypeError: unsupported operand type(s) for |`. Usar `Optional[X]` de `typing`, defaults sin tipo, o `from __future__ import annotations` al inicio del módulo (como `utils/auth.py`). Ojo: `py_compile` NO atrapa esto (es eval en runtime al definir) y un HTTP 200 de Streamlit es solo el shell estático; verificar con `python3 -c "import módulo"` o `streamlit.testing.v1.AppTest`.
 
 ---
 

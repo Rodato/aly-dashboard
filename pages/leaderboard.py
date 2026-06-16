@@ -12,7 +12,6 @@ import streamlit as st
 from utils.i18n import t
 from utils import db
 from utils.styles import COLORS, page_header, card_header
-from utils.translate import translate_keywords
 from components.filters import get_filters
 from components.kpi_row import ICONS as KPI_ICONS
 
@@ -20,6 +19,7 @@ filters   = get_filters()
 date_from = filters["date_from"]
 date_to   = filters["date_to"]
 bot_id    = filters["bot_id"]
+lang      = st.session_state.get("lang", "es")
 
 page_header(t("lb_page_title"), t("lb_page_sub"))
 
@@ -253,14 +253,9 @@ def _render_wordcloud(df_convs):
         st.info(t("no_keywords_yet"))
         return
 
+    # Los keywords ya vienen en el idioma activo desde la DB (summary_i18n /
+    # keywords_i18n los escribe el bot). No se traduce en la UI.
     freq = Counter(all_kws)
-    lang = st.session_state.get("lang", "es")
-    translation_map = translate_keywords(tuple(sorted(freq.keys())), lang)
-
-    translated_freq: dict = {}
-    for word, count in freq.items():
-        translated = translation_map.get(word, word)
-        translated_freq[translated] = translated_freq.get(translated, 0) + count
 
     accent = COLORS["accent"]
 
@@ -274,7 +269,7 @@ def _render_wordcloud(df_convs):
         color_func=_color_func,
         max_words=40,
         prefer_horizontal=0.85,
-    ).generate_from_frequencies(translated_freq)
+    ).generate_from_frequencies(freq)
 
     buf = io.BytesIO()
     wc.to_image().save(buf, format="PNG")
@@ -282,7 +277,7 @@ def _render_wordcloud(df_convs):
     st.image(buf, use_container_width=True)
 
     # Keyword frequency table
-    rows = [(w, c) for w, c in sorted(translated_freq.items(), key=lambda x: -x[1])][:30]
+    rows = [(w, c) for w, c in sorted(freq.items(), key=lambda x: -x[1])][:30]
     df_kw = pd.DataFrame(rows, columns=[t("keyword"), t("frequency")])
     st.dataframe(df_kw, use_container_width=True, hide_index=True, height=280)
 
@@ -365,7 +360,7 @@ if selected_rows:
         icon_svg=KPI_ICONS["users"],
     )
 
-    df_convs = db.get_user_conversations(user_number, date_from, date_to, bot_id=bot_id)
+    df_convs = db.get_user_conversations(user_number, date_from, date_to, bot_id=bot_id, lang=lang)
     df_msgs  = db.get_user_messages(user_number, date_from, date_to, bot_id=bot_id)
 
     if df_msgs.empty and df_convs.empty:
