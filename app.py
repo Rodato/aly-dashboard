@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 
 from utils.styles import inject as inject_styles
 from utils.i18n import t
+from utils.auth import require_login
 from components.filters import render_sidebar, render_topbar
 
 load_dotenv()
@@ -21,6 +22,11 @@ inject_styles()
 # Session state defaults
 if "lang" not in st.session_state:
     st.session_state.lang = "es"
+
+# Auth gate — renders the login screen and st.stop()s if not authenticated.
+# Past this line the user is logged in; their role + allowed bots live in
+# st.session_state (auth_role / auth_allowed_bots), read by the bot selector.
+require_login()
 
 # Filter state is initialized in components/filters.py when the sidebar renders
 

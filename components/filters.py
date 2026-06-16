@@ -81,20 +81,43 @@ def render_sidebar():
         _render_logo()
         _render_nav()
 
-        # ── Bot selector ──────────────────────────────────────────────────────
+        # ── Bot selector (role-aware) ─────────────────────────────────────────
+        # El rol del usuario logueado (auth.require_login) limita qué bots ve:
+        #   auth_allowed_bots == None  → todos (admin)
+        #   auth_allowed_bots == [...]  → solo esos bot_ids
         from utils.db import get_available_bot_ids
 
         available_bots = get_available_bot_ids()
+        allowed = st.session_state.get("auth_allowed_bots")  # None = sin restricción
 
-        if "selected_bot" not in st.session_state:
-            st.session_state["selected_bot"] = available_bots[0] if available_bots else "apapachar"
+        if allowed is None:
+            bot_options = available_bots
+        else:
+            # Intersecta con lo que hay en la DB; si la discovery no trae el bot
+            # del usuario (p. ej. aún sin datos), lo dejamos igual para no dejarlo
+            # sin opción.
+            bot_options = [b for b in available_bots if b in allowed] or list(allowed)
 
-        st.selectbox(
-            "Bot",
-            options=available_bots,
-            key="selected_bot",
-            help="Selecciona qué bot ver en el dashboard",
-        )
+        # Asegura que la selección actual sea válida para este rol (cubre cambio
+        # de usuario en el mismo navegador tras logout/login).
+        if st.session_state.get("selected_bot") not in bot_options:
+            st.session_state["selected_bot"] = bot_options[0] if bot_options else "apapachar"
+
+        if len(bot_options) > 1:
+            st.selectbox(
+                "Bot",
+                options=bot_options,
+                key="selected_bot",
+                help="Selecciona qué bot ver en el dashboard",
+            )
+        else:
+            # Un solo bot permitido → sin selector, queda fijado y se muestra como chip.
+            st.session_state["selected_bot"] = bot_options[0] if bot_options else "apapachar"
+            st.markdown(
+                '<div class="bot-locked">Bot<br>'
+                f'<b>{st.session_state["selected_bot"]}</b></div>',
+                unsafe_allow_html=True,
+            )
 
         st.markdown(
             '<hr style="margin:0.75rem 0">',
@@ -133,9 +156,28 @@ def render_sidebar():
         with col_b:
             st.button("30d", use_container_width=True, on_click=_set_range, args=(30,))
 
+        # ── Cuenta: conectado como + logout ───────────────────────────────────
+        auth_name = st.session_state.get("auth_name")
+        auth_role = st.session_state.get("auth_role")
+        if auth_name:
+            role_label = t(f"role_{auth_role}") if auth_role else ""
+            st.markdown(
+                f'<div style="margin-top:1.25rem;padding-top:0.75rem;'
+                f'border-top:1px solid #E5E7EB;font-family:\'Open Sans\',sans-serif">'
+                f'<div style="font-size:0.62rem;text-transform:uppercase;'
+                f'letter-spacing:0.08em;color:#9CA3AF">{t("logged_in_as")}</div>'
+                f'<div style="font-size:0.85rem;font-weight:600;color:#0C1214">{auth_name}</div>'
+                f'<div style="font-size:0.7rem;color:#6B7280">{role_label}</div>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+        authenticator = st.session_state.get("_authenticator")
+        if authenticator is not None:
+            authenticator.logout(t("logout"), location="sidebar")
+
         # ── Footer ────────────────────────────────────────────────────────────
         st.markdown(
-            f'<div style="margin-top:1.25rem;padding:0.5rem 0;'
+            f'<div style="margin-top:0.75rem;padding:0.5rem 0;'
             f'font-family:\'Open Sans\',sans-serif;font-size:0.68rem;'
             f'color:#9CA3AF;border-top:1px solid #E5E7EB">'
             f'{t("last_updated")}<br>'

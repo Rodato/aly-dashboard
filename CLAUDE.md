@@ -20,9 +20,25 @@ Dashboard operativo privado para **Apapáchar** (chatbot WhatsApp RAG, crianza 0
 
 El dashboard **detecta automáticamente** los `bot_id` disponibles en la DB (`utils/db.py:get_available_bot_ids()`) y muestra un **selector en el sidebar** (arriba de los filtros de fecha). El usuario elige qué bot ver; todas las queries filtran por el `bot_id` seleccionado. El valor seleccionado vive en `st.session_state["selected_bot"]` y se pasa via `get_filters()["bot_id"]`.
 
-**Estado actual (2026-05-29)**: el selector muestra **todos los bots** disponibles en la DB sin restricciones. Cualquier usuario puede ver cualquier bot.
+**Estado actual (2026-06-15)**: hay **autenticación con roles** (ver sección *Autenticación y roles*). El selector de bot se filtra por el rol del usuario logueado: `admin` ve todos los bots; `apapachar` queda bloqueado al bot `apapachar` (sin selector, chip fijo).
 
-**Pendiente para después**: implementar sistema de permisos por usuario. Cuando haya autenticación, agregar tabla `user_bot_permissions` y filtrar `get_available_bot_ids()` según el usuario logueado. La infraestructura ya está lista — solo falta la lógica de permisos.
+---
+
+## Autenticación y roles
+Login usuario/contraseña con **`streamlit-authenticator` (0.4.x)**. La puerta vive en `utils/auth.py:require_login()`, llamada en `app.py` **antes** de la nav y las páginas: si no hay sesión válida renderiza la pantalla de login (logo Aly + form) y hace `st.stop()`. La sesión persiste vía cookie firmada (no re-login en cada rerun).
+
+**Credenciales y roles viven en `st.secrets`** (`.streamlit/secrets.toml` en local — **gitignored**; secrets manager en Streamlit Cloud). Plantilla commiteada: `.streamlit/secrets.toml.example`. Estructura: `[cookie]`, `[credentials.usernames.<user>]` (con `password` = **hash bcrypt**, `roles = ["..."]`) y `[roles]` que mapea rol → lista de `bot_id` permitidos (`"*"` = todos).
+
+**Generar un hash bcrypt** para una contraseña nueva:
+```bash
+python3 -c "import bcrypt; print(bcrypt.hashpw(b'PASSWORD', bcrypt.gensalt()).decode())"
+```
+
+**Flujo rol → bots**: `require_login()` deja en session_state `auth_role`, `auth_allowed_bots` (None = todos, o lista de bot_ids), `auth_name`, `_authenticator`. `components/filters.py` lee `auth_allowed_bots` y: si es None muestra el selector con todos los bots; si es lista de 1 oculta el selector y fija el bot (chip `.bot-locked`); si la selección actual no es válida para el rol, la resetea. El logout (`authenticator.logout`) y el "Conectado como" se renderizan en el footer del sidebar.
+
+**Roles actuales**: `admin` → `["*"]` (todos los bots); `apapachar` → `["apapachar"]` (solo datos de Colombia).
+
+**Agregar un usuario/rol nuevo**: añadir `[credentials.usernames.<user>]` (hash + `roles`) y, si es un rol nuevo, una entrada en `[roles]`. Si es un rol nuevo, agregar también la clave i18n `role_<rol>` en `utils/i18n.py`. Sin migración de DB.
 
 ---
 
@@ -38,7 +54,11 @@ El dashboard **detecta automáticamente** los `bot_id` disponibles en la DB (`ut
 ```
 Aly_dashboard/
 ├── .env                        # DATABASE_URL
-├── app.py                      # Entry point — st.navigation (position="hidden"), CSS, render_sidebar() + render_topbar()
+├── .streamlit/
+│   ├── config.toml             # Tema Streamlit
+│   ├── secrets.toml            # Auth: credenciales + roles (GITIGNORED — no commitear)
+│   └── secrets.toml.example    # Plantilla commiteada del secrets.toml
+├── app.py                      # Entry point — auth gate (require_login), st.navigation (position="hidden"), CSS, render_sidebar() + render_topbar()
 ├── pages/
 │   ├── overview.py             # Inicio: hero banner, 4 KPIs con sparkline + caption explicativo, growth chart + stat_list (peak hour/day, grid 2:1), heatmap bloques. La gráfica de actividad rellena días sin datos con 0, fija el eje X al rango y desactiva el zoom de Plotly (ver Convenciones)
 │   ├── usuarios.py             # Demografía: 3 KPIs (users, regiones, msg/usuario), layout 2:1 — choropleth Colombia (33 deptos) a la izquierda, cobertura + ranking top 10 a la derecha
@@ -46,12 +66,13 @@ Aly_dashboard/
 │   ├── alertas.py              # Flags 🔴/🟠 (HIGH-/MEDIUM-), export Excel con transcripción, "marcar revisado" persistido en Supabase (reviewed_at)
 │   └── leaderboard.py          # Top usuarios: podio, bar top 10, tabla top 20 con Flags 🚩, drill-down con tabs (header muestra teléfono completo del usuario)
 ├── components/
-│   ├── filters.py              # render_sidebar() (logo Aly, nav custom Material icons, bot selector, date pickers + presets 7d/30d con on_click callbacks) + render_topbar() (selector de idioma ES/EN arriba a la derecha). get_filters() lee session_state. Sin export — descarga vive en Alertas
+│   ├── filters.py              # render_sidebar() (logo Aly, nav custom Material icons, bot selector role-aware, date pickers + presets 7d/30d con on_click callbacks, "conectado como" + logout) + render_topbar() (selector de idioma ES/EN arriba a la derecha). get_filters() lee session_state. Sin export — descarga vive en Alertas
 │   ├── kpi_row.py              # KPI cards HTML custom: accent bar + icon + sparkline SVG + delta pill. ICONS dict reutilizable
 │   └── charts.py               # Fábrica Plotly: bar_h, donut, bar_v, choropleth (silueta flat + dots), choropleth_colombia (departamentos con aliases)
 ├── data/
 │   └── colombia_departments.geojson  # GeoJSON bundled (33 deptos, featureidkey="properties.NOMBRE_DPT")
 ├── utils/
+│   ├── auth.py                 # require_login(): login streamlit-authenticator + resolución rol→bots + logout
 │   ├── db.py                   # Todas las queries SQL
 │   ├── i18n.py                 # Traducciones ES/EN via t("key")
 │   ├── styles.py               # CSS global + COLORS dict + helpers: page_header, hero_banner, card_header, stat_list, arc_row, section_label

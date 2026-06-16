@@ -10,6 +10,9 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "login_button": {"es": "Entrar", "en": "Sign in"},
     "login_error": {"es": "Usuario o contraseña incorrectos.", "en": "Invalid username or password."},
     "logout": {"es": "Cerrar sesión", "en": "Logout"},
+    "logged_in_as": {"es": "Conectado como", "en": "Logged in as"},
+    "role_admin": {"es": "Administrador", "en": "Administrator"},
+    "role_apapachar": {"es": "Apapachar · Colombia", "en": "Apapachar · Colombia"},
 
     # ---- Sidebar nav ----
     "nav_home":        {"es": "Inicio",      "en": "Home"},

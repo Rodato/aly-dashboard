@@ -154,6 +154,24 @@ def inject():
         padding: 0.75rem 0.6rem 0.4rem !important;
         margin-top: 0.5rem !important;
     }
+    .bot-locked {
+        font-family: 'Open Sans', sans-serif;
+        font-size: 0.66rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--text-muted);
+        background: #F3F4F6;
+        border: 1px solid #E5E7EB;
+        border-radius: 8px;
+        padding: 0.4rem 0.6rem;
+        line-height: 1.5;
+    }
+    .bot-locked b {
+        font-size: 0.92rem;
+        text-transform: none;
+        letter-spacing: 0;
+        color: var(--text);
+    }
     [data-testid="stSidebar"] [data-testid="stPageLink"] a,
     [data-testid="stSidebar"] a[data-testid="stPageLink-NavLink"] {
         display: flex !important;
