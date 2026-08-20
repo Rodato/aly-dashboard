@@ -157,6 +157,15 @@ def get_users_by_country(date_from=None, date_to=None, bot_id=None) -> pd.DataFr
 
 
 def get_users_by_gender(date_from=None, date_to=None, bot_id=None) -> pd.DataFrame:
+    """Return user counts grouped by gender.
+
+    Caveat (apapachar, fixed 2026-07-29): a bug in the bot's onboarding meant
+    anyone who answered "Otro" was saved with an empty/corrupt `gender`
+    instead. Rows from before that date undercount "Otro" — an empty/odd
+    value there is likely this bug, not a refusal to answer, and can't be
+    recovered retroactively. Not currently wired into any page; surface this
+    caveat if a gender breakdown chart gets built on top of this query.
+    """
     where_i, params_i = _date_filter(
         "ui.created_at", date_from, date_to,
         extra="ud.gender IS NOT NULL",
@@ -443,14 +452,21 @@ def get_summaries(date_from=None, date_to=None, limit: int = 20, bot_id=None, la
 
 
 def get_flags_data(date_from=None, date_to=None, bot_id=None) -> pd.DataFrame:
-    """Return conversations that have a flag value."""
+    """Return conversations that have a flag value.
+
+    Incluye ``id`` (PK real de la tabla) porque **``conversation_id`` NO es
+    único**: el bot reusa el mismo id para conversaciones distintas del mismo
+    usuario en días distintos (visto en apapachar y demo). Usar ``id`` — no
+    ``conversation_id`` — como identidad de fila en la UI y en los updates de
+    ``reviewed_at``.
+    """
     where, params = _date_filter(
         "conversation_date", date_from, date_to,
         extra="flags IS NOT NULL AND flags != ''",
         client_col="user_number", bot_col="bot_id", bot_id=bot_id,
     )
     query = f"""
-        SELECT conversation_id, user_number, conversation_date, flags, summary,
+        SELECT id, conversation_id, user_number, conversation_date, flags, summary,
                reviewed_at AT TIME ZONE '{TZ}' AS reviewed_at
         FROM public.conversations_data
         {where}
@@ -462,23 +478,32 @@ def get_flags_data(date_from=None, date_to=None, bot_id=None) -> pd.DataFrame:
         return pd.DataFrame()
 
 
-def mark_flag_reviewed(conversation_id: str) -> int:
-    """Stamp reviewed_at = NOW() on a conversation. Returns affected rowcount."""
+def mark_flag_reviewed(row_id) -> int:
+    """Stamp reviewed_at = NOW() on ONE conversation row (by PK ``id``).
+
+    Va por ``id`` y no por ``conversation_id`` a propósito: ese campo se repite
+    entre conversaciones distintas, y un UPDATE por ``conversation_id`` marcaba
+    como revisadas todas las filas que lo compartían — incluida una alerta real
+    que nadie había mirado. Devuelve el rowcount (debe ser 1).
+    """
     return execute(
         "UPDATE public.conversations_data "
         "SET reviewed_at = NOW() "
-        "WHERE conversation_id = %s",
-        [str(conversation_id)],
+        "WHERE id = %s",
+        [int(row_id)],
     )
 
 
-def unmark_flag_reviewed(conversation_id: str) -> int:
-    """Clear reviewed_at on a conversation. Returns affected rowcount."""
+def unmark_flag_reviewed(row_id) -> int:
+    """Clear reviewed_at on ONE conversation row (by PK ``id``).
+
+    Mismo motivo que ``mark_flag_reviewed``: la identidad de fila es ``id``.
+    """
     return execute(
         "UPDATE public.conversations_data "
         "SET reviewed_at = NULL "
-        "WHERE conversation_id = %s",
-        [str(conversation_id)],
+        "WHERE id = %s",
+        [int(row_id)],
     )
 
 
