@@ -40,6 +40,8 @@ python3 -c "import bcrypt; print(bcrypt.hashpw(b'PASSWORD', bcrypt.gensalt()).de
 
 **Agregar un usuario/rol nuevo**: añadir `[credentials.usernames.<user>]` (hash + `roles`) y, si es un rol nuevo, una entrada en `[roles]`. Si es un rol nuevo, agregar también la clave i18n `role_<rol>` en `utils/i18n.py`. Sin migración de DB.
 
+**Ojo — el username no es el rol.** Son cosas separadas: el username es lo que se teclea en el login, el rol sale de la lista `roles` de esa cuenta y es el que decide qué bots ve. En producción los usernames siguen la convención `<programa>_user` (`apapachar_user`, `mexico_user`), con `superadmin` como excepción histórica del admin — no coinciden con el nombre del rol (`apapachar`, `mexico`, `admin`). La plantilla `.streamlit/secrets.toml.example` refleja los nombres reales.
+
 ---
 
 ## Onboarding por bot — shape de datos y caveats (bot_id)
