@@ -197,11 +197,21 @@ def _load_colombia_geojson() -> dict:
 
 
 def _normalize_region(s) -> str:
+    """Normalize a raw `users_data.region` value for department matching.
+
+    Strips accents/case and the literal "Regional " prefix the Apapáchar
+    onboarding started writing on 2026-07-29 (e.g. "Regional Tolima"), so
+    pre- and post-cutover rows for the same department group together
+    instead of appearing as two separate regions on the map/ranking.
+    """
     if not s:
         return ""
     s = unicodedata.normalize("NFD", str(s))
     s = "".join(c for c in s if unicodedata.category(c) != "Mn")
-    return s.strip().lower()
+    s = s.strip().lower()
+    if s.startswith("regional "):
+        s = s[len("regional "):]
+    return s.strip()
 
 
 _COLOMBIA_ALIASES = {

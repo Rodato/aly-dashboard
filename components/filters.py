@@ -85,6 +85,7 @@ def render_sidebar():
         # El rol del usuario logueado (auth.require_login) limita qué bots ve:
         #   auth_allowed_bots == None  → todos (admin)
         #   auth_allowed_bots == [...]  → solo esos bot_ids
+        from utils.bots import bot_label
         from utils.db import get_available_bot_ids
 
         available_bots = get_available_bot_ids()
@@ -108,14 +109,15 @@ def render_sidebar():
                 "Bot",
                 options=bot_options,
                 key="selected_bot",
-                help="Selecciona qué bot ver en el dashboard",
+                format_func=bot_label,
+                help="Selecciona qué programa ver en el dashboard",
             )
         else:
             # Un solo bot permitido → sin selector, queda fijado y se muestra como chip.
             st.session_state["selected_bot"] = bot_options[0] if bot_options else "apapachar"
             st.markdown(
                 '<div class="bot-locked">Bot<br>'
-                f'<b>{st.session_state["selected_bot"]}</b></div>',
+                f'<b>{bot_label(st.session_state["selected_bot"])}</b></div>',
                 unsafe_allow_html=True,
             )
 

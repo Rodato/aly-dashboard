@@ -13,6 +13,7 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "logged_in_as": {"es": "Conectado como", "en": "Logged in as"},
     "role_admin": {"es": "Administrador", "en": "Administrator"},
     "role_apapachar": {"es": "Apapachar · Colombia", "en": "Apapachar · Colombia"},
+    "role_mexico": {"es": "Semillas · México", "en": "Semillas · Mexico"},
 
     # ---- Sidebar nav ----
     "nav_home":        {"es": "Inicio",      "en": "Home"},
@@ -135,6 +136,10 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "coverage_depts":      {"es": "Departamentos",        "en": "Departments"},
     "coverage_pct":        {"es": "% del país",           "en": "% of country"},
     "region_ranking":      {"es": "Top regiones",         "en": "Top regions"},
+    "region_distribution": {"es": "Distribución por región",
+                            "en": "Distribution by region"},
+    "no_geo_map":          {"es": "Este programa aún no tiene mapa geográfico: su onboarding no define una lista de regiones.",
+                            "en": "This program has no geographic map yet: its onboarding does not define a region list."},
     "kpi_countries":       {"es": "Países",            "en": "Countries"},
     "kpi_regions":         {"es": "Regiones",          "en": "Regions"},
     "kpi_top_country":     {"es": "País principal",    "en": "Top country"},

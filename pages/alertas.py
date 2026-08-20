@@ -185,6 +185,10 @@ else:
     )
 
     for _, row in working.iterrows():
+        # `id` es la PK de conversations_data. `conversation_id` NO es único
+        # (el bot lo reusa entre conversaciones distintas del mismo usuario),
+        # así que sirve para mostrar pero nunca como identidad de fila.
+        row_id       = row.get("id")
         conv_id      = str(row.get("conversation_id", "—"))
         fecha        = str(row.get("conversation_date", ""))[:16]
         flag         = str(row.get("flags", ""))
@@ -214,14 +218,17 @@ else:
                     unsafe_allow_html=True,
                 )
 
-            checkbox_key = f"rev_{conv_id}"
+            # Key por PK, no por conversation_id: dos filas con el mismo
+            # conversation_id generaban keys duplicadas y Streamlit tumbaba la
+            # página entera con StreamlitDuplicateElementKey.
+            checkbox_key = f"rev_{row_id}"
             st.session_state.setdefault(checkbox_key, is_reviewed)
             checked = st.checkbox(t("mark_reviewed"), key=checkbox_key)
             # Persistimos a Supabase solo cuando hay cambio real respecto al
             # estado en DB. El rerun trae la fila actualizada (con reviewed_at).
             if checked != is_reviewed:
                 if checked:
-                    db.mark_flag_reviewed(conv_id)
+                    db.mark_flag_reviewed(row_id)
                 else:
-                    db.unmark_flag_reviewed(conv_id)
+                    db.unmark_flag_reviewed(row_id)
                 st.rerun()

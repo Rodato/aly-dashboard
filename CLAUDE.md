@@ -16,11 +16,11 @@ python3 -m streamlit run app.py
 ## Proyecto
 Dashboard operativo privado para **Apapáchar** (chatbot WhatsApp RAG, crianza 0-5 años, Fundación Apapacho). Marca visible: **Aly**.
 
-**Multi-bot — alcance del dashboard:** la DB de Supabase es compartida. Las 3 tablas (`users_interactions`, `users_data`, `conversations_data`) tienen columna `bot_id` (type `text`, `NOT NULL`, default `''`). El bot escribe `'apapachar'` o `'demo'` según `BOT_ID` env var.
+**Multi-bot — alcance del dashboard:** la DB de Supabase es compartida. Las 3 tablas (`users_interactions`, `users_data`, `conversations_data`) tienen columna `bot_id` (type `text`, `NOT NULL`, default `''`). El bot escribe `'apapachar'`, `'demo'` o `'mexico'` (nuevo desde 2026-07-29) según `BOT_ID` env var.
 
 El dashboard **detecta automáticamente** los `bot_id` disponibles en la DB (`utils/db.py:get_available_bot_ids()`) y muestra un **selector en el sidebar** (arriba de los filtros de fecha). El usuario elige qué bot ver; todas las queries filtran por el `bot_id` seleccionado. El valor seleccionado vive en `st.session_state["selected_bot"]` y se pasa via `get_filters()["bot_id"]`.
 
-**Estado actual (2026-06-15)**: hay **autenticación con roles** (ver sección *Autenticación y roles*). El selector de bot se filtra por el rol del usuario logueado: `admin` ve todos los bots; `apapachar` queda bloqueado al bot `apapachar` (sin selector, chip fijo).
+**Estado actual (2026-08-20)**: hay **autenticación con roles** (ver sección *Autenticación y roles*). El selector de bot se filtra por el rol del usuario logueado: `admin` ve todos los bots; `apapachar` y `mexico` quedan bloqueados a su propio bot (sin selector, chip fijo). El selector muestra **etiquetas legibles** (`utils/bots.py:bot_label`), no el `bot_id` crudo.
 
 ---
 
@@ -36,9 +36,74 @@ python3 -c "import bcrypt; print(bcrypt.hashpw(b'PASSWORD', bcrypt.gensalt()).de
 
 **Flujo rol → bots**: `require_login()` deja en session_state `auth_role`, `auth_allowed_bots` (None = todos, o lista de bot_ids), `auth_name`, `_authenticator`. `components/filters.py` lee `auth_allowed_bots` y: si es None muestra el selector con todos los bots; si es lista de 1 oculta el selector y fija el bot (chip `.bot-locked`); si la selección actual no es válida para el rol, la resetea. El logout (`authenticator.logout`) y el "Conectado como" se renderizan en el footer del sidebar.
 
-**Roles actuales**: `admin` → `["*"]` (todos los bots); `apapachar` → `["apapachar"]` (solo datos de Colombia).
+**Roles actuales**: `admin` → `["*"]` (todos los bots); `apapachar` → `["apapachar"]` (solo Colombia); `mexico` → `["mexico"]` (solo Semillas de Igualdad, México — creado 2026-08-20).
 
 **Agregar un usuario/rol nuevo**: añadir `[credentials.usernames.<user>]` (hash + `roles`) y, si es un rol nuevo, una entrada en `[roles]`. Si es un rol nuevo, agregar también la clave i18n `role_<rol>` en `utils/i18n.py`. Sin migración de DB.
+
+---
+
+## Onboarding por bot — shape de datos y caveats (bot_id)
+
+El onboarding de Typebot es distinto por bot y determina qué llega a `users_data`. No asumir
+que todos los bots piden los mismos campos ni usan la misma lista de regiones — es config
+implícita por `bot_id`, no un esquema único. Estado al **2026-08-20** (las notas que dicen
+"hoy" en `apapachar`/`demo` son del corte del 2026-07-29):
+
+- **`apapachar`** (Colombia): el onboarding se rediseñó hoy para ser más corto y privacy-first.
+  Ya no pregunta nombre ni correo — solo género y región. **Toda fila nueva desde hoy tiene
+  `name: ""` y `email: ""`** (string vacío, no NULL); filas de antes sí tienen esos datos reales.
+  Es un corte en el tiempo, no una migración retroactiva. `leaderboard.py` ya cae correctamente
+  al número enmascarado cuando `name` es vacío (`display_name`), no requirió cambios.
+- **`mexico`** — programa **"Semillas de Igualdad"** (Equimundo + GENDES, implementado por el
+  Tec de Monterrey en el marco de la Nueva Escuela Mexicana). Usuaria: **docente de preescolar
+  en servicio en el Estado de México**, no madre/padre — comparte pipeline con Apapáchar pero
+  NADA de su contenido (ver `src/Constants/MexicoAgentPrompts.ts` en el repo del bot).
+  Número `+1 262-405-0527`.
+  **Al 2026-08-20 sigue sin tráfico real** (ver *Estado de los datos de `mexico`* abajo) y su
+  onboarding sigue clonado del `demo`: no pide género ni región. El selector de bot
+  (`get_available_bot_ids()`) ya lo detecta automáticamente — no requiere cambio de código.
+- **`demo`**: sin onboarding de género/región (heredado, sin cambios hoy).
+
+**Lista de regiones de `apapachar`** pasó de 10 (sin prefijo, ej. `"Tolima"`) a **17, todas con
+el prefijo literal `"Regional "`** (ej. `"Regional Tolima"`), agregando Arauca, Atlántico,
+Bolívar, Caldas, Nariño, Quindío y Risaralda. `components/charts.py:_normalize_region()` quita
+ese prefijo (además de tildes/mayúsculas) antes de matchear contra el GeoJSON, así que filas
+viejas (`"Tolima"`) y nuevas (`"Regional Tolima"`) agrupan igual en el mapa/ranking de
+`usuarios.py` — no hace falta migrar datos históricos. Los 33 departamentos del GeoJSON ya
+cubren las regiones nuevas, no hay que tocar `data/colombia_departments.geojson`.
+
+**Caveat de género histórico (`apapachar`)**: había un bug donde responder "Otro" guardaba
+`gender` vacío/corrupto en vez de "Otro" — se arregló hoy. Filas de antes de 2026-07-29 con
+`gender` vacío/raro probablemente son este bug, no gente que se negó a responder; no es
+recuperable retroactivamente. Documentado en el docstring de `db.get_users_by_gender()` — esa
+query no está conectada a ninguna página todavía, así que si se construye un breakdown de
+género hay que arrastrar este caveat a la UI.
+
+**Mapa geográfico = config por bot (resuelto 2026-08-20)**: el pendiente de "el mapa de Colombia
+se renderiza para cualquier bot" se cerró con **`utils/bots.py`**, un registro `bot_id → {label, geo}`.
+`pages/usuarios.py` consulta `bot_geo(bot_id)`: si es `"colombia"` renderiza el choropleth de
+departamentos + el panel de cobertura territorial (layout 2:1 de siempre); si es `None`
+(hoy `mexico` y `demo`) muestra **solo el ranking de regiones a ancho completo**, sin mapa mal
+etiquetado y sin "% del país" (una métrica que no significa nada sin GeoJSON), más el caption
+`no_geo_map`. Un `bot_id` que aparezca en la DB y no esté en el registro cae a
+`DEFAULT_BOT_META` (label = el propio id, sin mapa) — nunca hereda geografía por accidente.
+**Cuando Semillas defina su lista de regiones**, agregar el GeoJSON, un `choropleth_mexico()` en
+`components/charts.py` y cambiar `BOTS["mexico"]["geo"]` a `"mexico"`; no hay que tocar la página.
+
+### Estado de los datos de `mexico` (verificado 2026-08-20)
+La tabla cruda tiene 128 interacciones / 64 conversaciones bajo `bot_id='mexico'`, pero
+**~98% es ruido de `aly-evals`**: 126 de esas interacciones vienen de `client_number='eval'` y
+las 64 conversaciones son todas `eval-mexico-v*-...`. `_date_filter()` ya las excluye, así que
+**lo que el dashboard muestra hoy para México es 1 usuario / 2 mensajes / 1 conversación** — y
+esa única fila también es de prueba: `Lorena Nova`, `country='DEMO'`, `region='PRUEBAS'`,
+del 2026-07-30. No hay tráfico real de docentes todavía; el dashboard está listo y esperando.
+
+**Bug del onboarding de México — `users_data.gender` guarda el script, no el resultado.** La
+única fila de `mexico` tiene en `gender` el **código JavaScript literal** del bloque de Typebot
+(`let genderInput = 1\ngenderInput = genderInput.toLowerCase()...`) en vez de `"Hombre"`/
+`"Mujer"`/`"Otro"`. El bloque no se está evaluando: se guarda como texto. Hay que arreglarlo en
+Typebot **antes** de que entre tráfico real, o toda la demografía de género de Semillas nace
+corrupta. Es distinto del caveat de género de `apapachar` (ese guardaba vacío, no el script).
 
 ---
 
@@ -62,7 +127,7 @@ Aly_dashboard/
 ├── app.py                      # Entry point — auth gate (require_login), st.navigation (position="hidden"), CSS, render_sidebar() + render_topbar()
 ├── pages/
 │   ├── overview.py             # Inicio: hero banner, 4 KPIs con sparkline + caption explicativo, growth chart + stat_list (peak hour/day, grid 2:1), heatmap bloques. La gráfica de actividad rellena días sin datos con 0, fija el eje X al rango y desactiva el zoom de Plotly (ver Convenciones)
-│   ├── usuarios.py             # Demografía: 3 KPIs (users, regiones, msg/usuario), layout 2:1 — choropleth Colombia (33 deptos) a la izquierda, cobertura + ranking top 10 a la derecha
+│   ├── usuarios.py             # Demografía: 3 KPIs (users, regiones, msg/usuario). Layout **según `bot_geo()`**: bots con mapa (apapachar) → 2:1 choropleth Colombia + cobertura + ranking top 10; bots sin mapa (mexico, demo) → ranking top 15 a ancho completo
 │   ├── conversaciones.py       # Keywords + resúmenes (no está en nav, en standby)
 │   ├── alertas.py              # Flags 🔴/🟠 (HIGH-/MEDIUM-), export Excel con transcripción, "marcar revisado" persistido en Supabase (reviewed_at)
 │   └── leaderboard.py          # Top usuarios: podio, bar top 10, tabla top 20 con Flags 🚩, drill-down con tabs (header muestra teléfono completo del usuario)
@@ -74,6 +139,7 @@ Aly_dashboard/
 │   └── colombia_departments.geojson  # GeoJSON bundled (33 deptos, featureidkey="properties.NOMBRE_DPT")
 ├── utils/
 │   ├── auth.py                 # require_login(): login streamlit-authenticator + resolución rol→bots + logout
+│   ├── bots.py                 # Registro bot_id → {label, geo}: nombre legible para la UI + qué mapa aplica
 │   ├── db.py                   # Todas las queries SQL
 │   ├── i18n.py                 # Traducciones ES/EN via t("key")
 │   ├── styles.py               # CSS global + COLORS dict + helpers: page_header, hero_banner, card_header, stat_list, arc_row, section_label
@@ -117,9 +183,9 @@ Todas las queries de tiempo convierten a **GMT-5 (`America/Bogota`)** vía `AT T
 - `get_kpi_deltas(from, to)` → dict deltas fraccionales vs período anterior
 - `get_conversations_data(from, to, lang="es")` → df completo de conversations_data
 - `get_summaries(from, to, limit, lang="es")` → df resúmenes recientes
-- `get_flags_data(from, to)` → df conversaciones con flags + `reviewed_at` (en GMT-5)
-- `mark_flag_reviewed(conv_id)` → UPDATE … SET reviewed_at = NOW()
-- `unmark_flag_reviewed(conv_id)` → UPDATE … SET reviewed_at = NULL
+- `get_flags_data(from, to)` → df conversaciones con flags + `id` (PK) + `reviewed_at` (en GMT-5)
+- `mark_flag_reviewed(row_id)` → UPDATE … SET reviewed_at = NOW() **WHERE id** (ver *Identidad de fila*)
+- `unmark_flag_reviewed(row_id)` → UPDATE … SET reviewed_at = NULL **WHERE id**
 - `get_flag_counts_by_user(from, to)` → df user_number/n_flags (solo HIGH-/MEDIUM-)
 - `get_leaderboard(from, to, limit)` → df top usuarios (last_seen / days_active en GMT-5)
 - `get_interactions_export(from, to)` → df para Excel export de interacciones (queda disponible aunque ya no se exponga en sidebar)
@@ -166,6 +232,30 @@ El bot (`Aly_Apapachar`) escribe en `conversations_data` dos columnas JSONB extr
 - **Estado compartido entre usuarios**: persistir en Supabase, no en `st.session_state` (que es por sesión de browser). Ej.: `reviewed_at` de las flags vive en `conversations_data`, no en memoria.
 - **Filtrado de cuentas test**: toda query nueva sobre `users_interactions/conversations_data` debe pasar por `_date_filter()` para heredar el filtro de aly-evals automáticamente. No bypassear con `fetch_df` directo sin pensar en qué datos estás trayendo.
 - **Python 3.9 (entorno de runtime)**: la app corre sobre el Python 3.9 del sistema. **No usar la sintaxis `X | None`** (PEP 604) en anotaciones de módulos compartidos — falla al importar con `TypeError: unsupported operand type(s) for |`. Usar `Optional[X]` de `typing`, defaults sin tipo, o `from __future__ import annotations` al inicio del módulo (como `utils/auth.py`). Ojo: `py_compile` NO atrapa esto (es eval en runtime al definir) y un HTTP 200 de Streamlit es solo el shell estático; verificar con `python3 -c "import módulo"` o `streamlit.testing.v1.AppTest`.
+
+---
+
+## Identidad de fila en `conversations_data`: usar `id`, NO `conversation_id`
+
+**`conversation_id` no es único.** El bot reusa el mismo id para conversaciones distintas del
+mismo usuario en días distintos: al 2026-08-20 hay 2 colisiones en `apapachar` (ej. `3132312`,
+del 2 y del 11 de junio, resúmenes distintos) y 20 en `demo`. La PK real de la tabla es la
+columna **`id` (bigint)**.
+
+Esto causaba dos bugs en `pages/alertas.py`, arreglados el 2026-08-20:
+1. **Crash**: el checkbox "marcar revisado" usaba `key=f"rev_{conv_id}"`; dos filas con el mismo
+   `conversation_id` producían keys duplicadas y Streamlit tumbaba la página entera con
+   `StreamlitDuplicateElementKey`. Reventaba con `demo` seleccionado; `apapachar` se salvaba
+   solo porque sus 2 colisiones no traían flag HIGH/MEDIUM (la página filtra a rojo/naranja).
+2. **Corrupción silenciosa, peor que el crash**: `mark_flag_reviewed` hacía
+   `UPDATE … WHERE conversation_id = %s`, así que marcar una conversación marcaba **todas** las
+   que compartían el id — incluida una alerta real que nadie había revisado, que desaparecía del
+   toggle "ocultar revisadas" sin que nadie la mirara. Verificado: el UPDATE viejo tocaba 2 filas,
+   el nuevo toca 1.
+
+**Regla**: cualquier query o widget nuevo sobre `conversations_data` que necesite identificar
+una fila debe traer y usar `id`. `conversation_id` sirve para mostrar y para cruzar con
+`users_interactions` (que no tiene forma de distinguir las colisiones), nunca como clave.
 
 ---
 
