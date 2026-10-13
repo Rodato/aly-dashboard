@@ -59,8 +59,13 @@ def _mask(number):
     return s[:4] + "****" + s[-2:] if len(s) >= 8 else s[:3] + "****"
 
 
+def _mask_name(name):
+    """El nombre del perfil de WhatsApp, enmascarado: "María López" → "M**** L****"."""
+    return " ".join(w[0] + "****" for w in str(name).split())
+
+
 df["display_name"] = df.apply(
-    lambda r: str(r["name"]) if pd.notna(r.get("name")) and str(r.get("name", "")).strip() else _mask(r["client_number"]),
+    lambda r: _mask_name(r["name"]) if pd.notna(r.get("name")) and str(r.get("name", "")).strip() else _mask(r["client_number"]),
     axis=1,
 )
 
